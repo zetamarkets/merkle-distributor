@@ -64,6 +64,7 @@ pub mod merkle_distributor {
         max_num_nodes: u64,
     ) -> ProgramResult {
         let distributor = &mut ctx.accounts.distributor;
+        require!(distributor.root != root, UpdateRootNoChange);
 
         distributor.root = root;
         distributor.max_total_claim = max_total_claim;
@@ -338,4 +339,6 @@ pub enum ErrorCode {
     DistributorAdminMismatch,
     #[msg("no claimable amount")]
     NoClaimableAmount,
+    #[msg("update root no change")]
+    UpdateRootNoChange
 }
