@@ -1,6 +1,14 @@
 [
   {
-    "authority": "BvQehamu1bJLQ16GyHJjCuMFCGjTX2icMkYAcvDQ74v",
-    "amount": "123456"
+    "authority": "HsUUmbVdxkxQrGnvYF65a4GqdK2j4SnVKLbXsD2Xah9y",
+    "amount": "3"
+  },
+  {
+    "authority": "AnStvvQyJhnGFU1kBRcDdGbmUvE3UL5ux4oVUFYEWL3E",
+    "amount": "2"
+  },
+  {
+    "authority": "JB2K9fH1VQrCAMV5ik1koeT5HKuywuYS2AfJFRb5RZtz",
+    "amount": "5"
   }
 ]

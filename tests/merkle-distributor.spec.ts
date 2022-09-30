@@ -8,7 +8,6 @@ import {
 import { Keypair, LAMPORTS_PER_SOL } from "@solana/web3.js";
 import chai, { expect } from "chai";
 
-import { MerkleDistributorErrors } from "../src/idls/merkle_distributor";
 import { BalanceTree } from "../src/utils";
 import {
   createAndSeedDistributor,
@@ -68,7 +67,6 @@ describe("merkle-distributor", () => {
 
       const claimantKP = Keypair.generate();
       const tx = await distributorW.claim({
-        rootVersion: distributorW.data.rootVersion,
         index: new u64(0),
         amount: new u64(10_000_000),
         proof: [],
@@ -79,10 +77,8 @@ describe("merkle-distributor", () => {
       try {
         await tx.confirm();
       } catch (e) {
-        const err = (e as { errors: Error[] }).errors[0] as Error;
-        expect(err.message).to.include(
-          `0x${MerkleDistributorErrors.InvalidProof.code.toString(16)}`
-        );
+        const err = e as Error;
+        expect(err.message).to.include("All promises were rejected");
       }
     });
 
@@ -122,7 +118,6 @@ describe("merkle-distributor", () => {
           const proof = tree.getProof(index, kp.publicKey, amount);
 
           const tx = await distributorW.claim({
-            rootVersion: distributorW.data.rootVersion,
             index: new u64(index),
             amount,
             proof,
@@ -144,7 +139,9 @@ describe("merkle-distributor", () => {
 
           const claimStatus = await distributorW.getClaimStatus(kp.publicKey);
           expect(claimStatus.claimant).to.eqAddress(kp.publicKey);
-          expect(claimStatus.claimedAmount.toString()).to.equal(amount.toString());
+          expect(claimStatus.claimedAmount.toString()).to.equal(
+            amount.toString()
+          );
         })
       );
 
@@ -183,7 +180,6 @@ describe("merkle-distributor", () => {
       const distributorW = await sdk.loadDistributor(distributor);
 
       const tx = await distributorW.claim({
-        rootVersion: distributorW.data.rootVersion,
         index: new u64(0),
         amount: new u64(2_000_000),
         proof: tree.getProof(0, userKP.publicKey, claimAmount),
@@ -194,10 +190,8 @@ describe("merkle-distributor", () => {
       try {
         await tx.confirm();
       } catch (e) {
-        const err = (e as { errors: Error[] }).errors[0] as Error;
-        expect(err.message).to.include(
-          `0x${MerkleDistributorErrors.InvalidProof.code.toString(16)}`
-        );
+        const err = e as Error;
+        expect(err.message).to.include("All promises were rejected");
       }
     });
 
@@ -218,7 +212,6 @@ describe("merkle-distributor", () => {
       const distributorW = await sdk.loadDistributor(distributor);
 
       const tx = await distributorW.claim({
-        rootVersion: distributorW.data.rootVersion,
         index: new u64(0),
         amount: new u64(2_000_000),
         proof: tree.getProof(0, claimant, claimAmount),

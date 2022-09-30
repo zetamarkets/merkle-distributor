@@ -72,6 +72,7 @@
     "idl:generate:nolint": "./scripts/idl.sh && RUN_ESLINT=none ./scripts/generate-idl-types.sh"
   },
   "dependencies": {
+    "dotenv": "^10.0.0",
     "js-sha3": "^0.8.0",
     "tiny-invariant": "^1.2.0",
     "tslib": "^2.3.1"

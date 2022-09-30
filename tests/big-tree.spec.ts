@@ -1,6 +1,6 @@
 import { chaiSolana } from "@saberhq/chai-solana";
 import { u64 } from "@saberhq/token-utils";
-import type { PublicKey } from "@solana/web3.js";
+import { PublicKey } from "@solana/web3.js";
 import chai, { expect } from "chai";
 
 import { BalanceTree } from "../src/utils";
@@ -59,7 +59,6 @@ describe("big tree", () => {
       const index = new u64(90000);
       const claimant = provider.wallet.publicKey;
       const tx = await distributorWrapper.claim({
-        rootVersion: distributorWrapper.data.rootVersion,
         index,
         amount,
         proof: tree.getProof(

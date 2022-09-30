@@ -16,6 +16,7 @@ import type {
   DistributorData,
   MerkleDistributorProgram,
   PendingDistributor,
+  UpdateDistributorArgs,
 } from "./types";
 import { toBytes32Array } from "./utils";
 
@@ -100,15 +101,13 @@ export class MerkleDistributorWrapper {
     };
   }
 
-  async claimIX(
-    args: ClaimArgs,
-    payer: PublicKey
-  ): Promise<TransactionInstruction> {
+  async claimIX(args: ClaimArgs): Promise<TransactionInstruction> {
     const { amount, claimant, index, proof } = args;
     const [claimStatus, bump] = await findClaimStatusKey(claimant, this.key);
+    claimStatus;
+    // let to = await getAssociatedTokenAddress(claimant, this.data.mint);
 
     return this.program.instruction.claim(
-      args.rootVersion,
       bump,
       index,
       amount,
@@ -120,7 +119,7 @@ export class MerkleDistributorWrapper {
           from: this.distributorATA,
           to: await getATAAddress({ mint: this.data.mint, owner: claimant }),
           claimant,
-          payer,
+          payer: claimant,
           systemProgram: SystemProgram.programId,
           tokenProgram: TOKEN_PROGRAM_ID,
         },
@@ -130,9 +129,7 @@ export class MerkleDistributorWrapper {
 
   async claim(args: ClaimArgs): Promise<TransactionEnvelope> {
     const { provider } = this.sdk;
-    const tx = new TransactionEnvelope(provider, [
-      await this.claimIX(args, provider.wallet.publicKey),
-    ]);
+    const tx = new TransactionEnvelope(provider, [await this.claimIX(args)]);
     const { instruction } = await getOrCreateATA({
       provider,
       mint: this.data.mint,
@@ -151,5 +148,25 @@ export class MerkleDistributorWrapper {
 
   async reload(): Promise<void> {
     this.data = await this.program.account.merkleDistributor.fetch(this.key);
+  }
+
+  async update(args: UpdateDistributorArgs): Promise<TransactionEnvelope> {
+    const ixs: TransactionInstruction[] = [];
+
+    ixs.push(
+      this.sdk.program.instruction.updateDistributor(
+        toBytes32Array(args.root),
+        args.maxTotalClaim,
+        args.maxNumNodes,
+        {
+          accounts: {
+            adminAuth: args.adminAuth.publicKey,
+            distributor: this.key,
+          },
+        }
+      )
+    );
+
+    return new TransactionEnvelope(this.sdk.provider, ixs);
   }
 }
