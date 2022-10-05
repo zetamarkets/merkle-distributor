@@ -3,7 +3,10 @@ import {
   SingleConnectionBroadcaster,
   SolanaProvider,
 } from "@saberhq/solana-contrib";
-import { /* getOrCreateATA, */ u64 } from "@saberhq/token-utils";
+import {
+  /* getOrCreateATA, */
+  u64,
+} from "@saberhq/token-utils";
 // import {
 //   ASSOCIATED_TOKEN_PROGRAM_ID,
 //   Token,
@@ -60,7 +63,6 @@ const main = async () => {
   );
 
   // If necessary, use the following code to create an ATA
-  // I found that getOrCreateATA didn't create one if it didn't exist, so you have to force it
   /*
   let ata = (
     await getOrCreateATA({
@@ -82,7 +84,7 @@ const main = async () => {
   // Create the transaction to update the existing distributor
   // Note: amount is the total you are entitled to, including whatever is already claimed from before
   let tx = await distributor.claim({
-    amount: new u64(5),
+    amount: new u64(2000000000),
     index: new u64(userClaim.index),
     proof: userClaim.proof,
     claimant: userKey.publicKey,

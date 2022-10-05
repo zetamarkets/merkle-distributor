@@ -10,6 +10,8 @@ import airdropDataRaw from "../data/airdrop-amounts.json";
 import { MerkleDistributorSDK } from "../src/sdk";
 import { parseBalanceMap } from "../src/utils/parse-balance-map";
 
+require("dotenv").config();
+
 const main = async () => {
   // Load the airdrop data in data/airdrop-amounts.json and make a local tree out of it
   const balanceMap: { [authority: string]: u64 } = {};
