@@ -1,25 +1,16 @@
 {
-  "name": "@saberhq/merkle-distributor",
-  "version": "0.2.6",
+  "name": "@zetamarkets/merkle-distributor",
+  "version": "0.1.1",
   "description": "TypeScript SDK for a Solana program for distributing tokens according to a Merkle root.",
   "main": "dist/cjs/index.js",
   "module": "dist/esm/index.js",
   "keywords": [
     "solana",
     "blockchain",
-    "airdrop",
-    "saber"
+    "airdrop"
   ],
-  "bugs": {
-    "url": "https://github.com/saber-hq/merkle-distributor/issues",
-    "email": "ian@ship.capital"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/saber-hq/merkle-distributor.git"
-  },
-  "author": "Saber Team <team@saber.so>",
-  "homepage": "https://saber.so",
+  "author": "Zeta Team",
+  "homepage": "https://www.zeta.markets/",
   "license": "GPL-3.0",
   "publishConfig": {
     "access": "public"
