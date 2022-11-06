@@ -1,6 +1,14 @@
 [
   {
-    "authority": "BvQehamu1bJLQ16GyHJjCuMFCGjTX2icMkYAcvDQ74v",
-    "amount": "123456"
+    "authority": "BvQehamu1bJLQ16GyHJjCuMFCGjTX2icMkYAcvDQ741",
+    "amount": "1234"
+  },
+  {
+    "authority": "BvQehamu1bJLQ16GyHJjCuMFCGjTX2icMkYAcvDQ742",
+    "amount": "5678"
+  },
+  {
+    "authority": "BvQehamu1bJLQ16GyHJjCuMFCGjTX2icMkYAcvDQ743",
+    "amount": "12345678"
   }
 ]
