@@ -34,17 +34,17 @@ pub mod merkle_distributor {
     /// After creating this [MerkleDistributor], the account should be seeded with tokens via its ATA.
     pub fn new_distributor(
         ctx: Context<NewDistributor>,
-        bump: u8,
+        _bump: u8,
         root: [u8; 32],
         max_total_claim: u64,
         max_num_nodes: u64,
-    ) -> ProgramResult {
+    ) -> Result<()> {
         let distributor = &mut ctx.accounts.distributor;
 
         distributor.base = ctx.accounts.base.key();
         distributor.admin_auth = ctx.accounts.admin_auth.key();
 
-        distributor.bump = bump;
+        distributor.bump = unwrap_bump!(ctx, "distributor");
 
         distributor.root = root;
         distributor.mint = ctx.accounts.mint.key();
@@ -62,7 +62,7 @@ pub mod merkle_distributor {
         root: [u8; 32],
         max_total_claim: u64,
         max_num_nodes: u64,
-    ) -> ProgramResult {
+    ) -> Result<()> {
         let distributor = &mut ctx.accounts.distributor;
         require!(distributor.root != root, UpdateRootNoChange);
 
@@ -82,7 +82,7 @@ pub mod merkle_distributor {
         index: u64,
         amount: u64,
         proof: Vec<[u8; 32]>,
-    ) -> ProgramResult {
+    ) -> Result<()> {
         let claim_status = &mut ctx.accounts.claim_status;
         require!(claim_status.claimed_amount < amount, NoClaimableAmount);
 
@@ -166,7 +166,7 @@ pub mod merkle_distributor {
         Ok(())
     }
 
-    pub fn update_admin_auth(ctx: Context<UpdateAdminAuth>) -> ProgramResult {
+    pub fn update_admin_auth(ctx: Context<UpdateAdminAuth>) -> Result<()> {
         let distributor = &mut ctx.accounts.distributor;
         distributor.admin_auth = ctx.accounts.new_admin_auth.key();
 
@@ -227,7 +227,7 @@ pub struct Claim<'info> {
 
     /// Status of the claim.
     #[account(
-    init_if_needed,
+    init,
     seeds = [
     b"ClaimStatus".as_ref(),
     distributor.key().to_bytes().as_ref(),
@@ -333,7 +333,7 @@ pub struct ClaimedEvent {
 }
 
 /// Error codes.
-#[error]
+#[error_code]
 pub enum ErrorCode {
     #[msg("Invalid Merkle proof.")]
     InvalidProof,
