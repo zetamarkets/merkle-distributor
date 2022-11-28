@@ -1,4 +1,4 @@
-import { AnchorProvider, setProvider } from "@project-serum/anchor";
+import { AnchorProvider, setProvider, Wallet } from "@project-serum/anchor";
 import { expectTX } from "@saberhq/chai-solana";
 import type { Provider } from "@saberhq/solana-contrib";
 import { SolanaProvider, TransactionEnvelope } from "@saberhq/solana-contrib";
@@ -57,6 +57,7 @@ export const createAndSeedDistributor = async (
     maxTotalClaim,
     maxNumNodes,
     tokenMint: mint,
+    adminAuth: (provider.wallet as Wallet).payer,
   });
   await expectTX(pendingDistributor.tx, "create merkle distributor").to.be
     .fulfilled;

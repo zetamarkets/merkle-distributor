@@ -227,7 +227,7 @@ pub struct Claim<'info> {
 
     /// Status of the claim.
     #[account(
-    init,
+    init_if_needed,
     seeds = [
     b"ClaimStatus".as_ref(),
     distributor.key().to_bytes().as_ref(),
