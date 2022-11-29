@@ -84,7 +84,7 @@ const main = async () => {
   // Create the transaction to update the existing distributor
   // Note: amount is the total you are entitled to, including whatever is already claimed from before
   let tx = await distributor.claim({
-    amount: new u64(2000000000),
+    amount: new u64(userClaim.amount),
     index: new u64(userClaim.index),
     proof: userClaim.proof,
     claimant: userKey.publicKey,

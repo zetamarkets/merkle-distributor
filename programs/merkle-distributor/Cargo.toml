@@ -25,6 +25,7 @@ production = []
 default = []
 
 [dependencies]
-anchor-lang = ">=0.17.0"
-anchor-spl = ">=0.17.0"
-vipers = "1.5.5"
+anchor-lang = {version = "0.24", features = ["init-if-needed"]}
+anchor-spl = ">=0.22, <=0.24"
+vipers = { version = "^2", features = ["spl-associated-token-account"] }
+
