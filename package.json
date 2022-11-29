@@ -1,6 +1,6 @@
 {
   "name": "@zetamarkets/merkle-distributor",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "TypeScript SDK for a Solana program for distributing tokens according to a Merkle root.",
   "main": "dist/cjs/index.js",
   "module": "dist/esm/index.js",
@@ -67,7 +67,8 @@
     "js-sha3": "^0.8.0",
     "superstruct": "^0.16.0",
     "tiny-invariant": "^1.2.0",
-    "tslib": "^2.3.1"
+    "tslib": "^2.3.1",
+    "yarn": "^1.22.19"
   },
   "peerDependencies": {
     "@project-serum/anchor": "^0.24.2",
