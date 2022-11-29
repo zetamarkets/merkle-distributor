@@ -1,14 +1,14 @@
 [
   {
-    "authority": "GZP5ZV1PX9bRFLiBRYVR7dC3FYRwHiejq2Q52Fyyjueu",
-    "amount": "2000000000"
+    "authority": "BvQehamu1bJLQ16GyHJjCuMFCGjTX2icMkYAcvDQ741",
+    "amount": "1234"
   },
   {
-    "authority": "Dv6KBPTMASV4MYUhXGSJWU5bEBAaeuBP2LNs7ncMTTQV",
-    "amount": "2000000000"
+    "authority": "BvQehamu1bJLQ16GyHJjCuMFCGjTX2icMkYAcvDQ742",
+    "amount": "5678"
   },
   {
-    "authority": "Bf9QK9JBD6JEu2uW9zK3PRPh3pXSyr1UkkLySvC5Wuvo",
-    "amount": "5000000000"
+    "authority": "BvQehamu1bJLQ16GyHJjCuMFCGjTX2icMkYAcvDQ743",
+    "amount": "12345678"
   }
 ]
