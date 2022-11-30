@@ -9,7 +9,7 @@ cluster = "localnet"
 wallet = "./tests/test-key.json"
 
 [programs.mainnet]
-merkle_distributor = "51WuMUGPN9dR8Fu9jtn8ZZokfjq13uBYhRBRWn3sZyvR"
+merkle_distributor = "AKnD97G9JDc334HV3ZoQoj79ogJDVsjaAW5UGPHraSvZ"
 
 [programs.devnet]
 merkle_distributor = "51WuMUGPN9dR8Fu9jtn8ZZokfjq13uBYhRBRWn3sZyvR"
