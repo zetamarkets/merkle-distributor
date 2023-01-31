@@ -20,7 +20,7 @@ use vipers::prelude::*;
 
 pub mod merkle_proof;
 
-declare_id!("PMRKTWvK9f1cPkQuXvvyDPmyCSoq8FdedCimXrXJp8M");
+declare_id!("AKnD97G9JDc334HV3ZoQoj79ogJDVsjaAW5UGPHraSvZ");
 
 /// The [merkle_distributor] program.
 #[program]
@@ -34,17 +34,17 @@ pub mod merkle_distributor {
     /// After creating this [MerkleDistributor], the account should be seeded with tokens via its ATA.
     pub fn new_distributor(
         ctx: Context<NewDistributor>,
-        bump: u8,
+        _bump: u8,
         root: [u8; 32],
         max_total_claim: u64,
         max_num_nodes: u64,
-    ) -> ProgramResult {
+    ) -> Result<()> {
         let distributor = &mut ctx.accounts.distributor;
 
         distributor.base = ctx.accounts.base.key();
         distributor.admin_auth = ctx.accounts.admin_auth.key();
 
-        distributor.bump = bump;
+        distributor.bump = unwrap_bump!(ctx, "distributor");
 
         distributor.root = root;
         distributor.mint = ctx.accounts.mint.key();
@@ -62,7 +62,7 @@ pub mod merkle_distributor {
         root: [u8; 32],
         max_total_claim: u64,
         max_num_nodes: u64,
-    ) -> ProgramResult {
+    ) -> Result<()> {
         let distributor = &mut ctx.accounts.distributor;
         require!(distributor.root != root, UpdateRootNoChange);
 
@@ -82,7 +82,7 @@ pub mod merkle_distributor {
         index: u64,
         amount: u64,
         proof: Vec<[u8; 32]>,
-    ) -> ProgramResult {
+    ) -> Result<()> {
         let claim_status = &mut ctx.accounts.claim_status;
         require!(claim_status.claimed_amount < amount, NoClaimableAmount);
 
@@ -96,6 +96,7 @@ pub mod merkle_distributor {
             return Err(ErrorCode::Unauthorized)?;
         }
 
+        require!(claimant_account.is_signer, Unauthorized);
         // Verify the merkle proof.
         let node = anchor_lang::solana_program::keccak::hashv(&[
             &index.to_le_bytes(),
@@ -165,7 +166,7 @@ pub mod merkle_distributor {
         Ok(())
     }
 
-    pub fn update_admin_auth(ctx: Context<UpdateAdminAuth>) -> ProgramResult {
+    pub fn update_admin_auth(ctx: Context<UpdateAdminAuth>) -> Result<()> {
         let distributor = &mut ctx.accounts.distributor;
         distributor.admin_auth = ctx.accounts.new_admin_auth.key();
 
@@ -187,10 +188,11 @@ pub struct NewDistributor<'info> {
     init,
     seeds = [
     b"MerkleDistributor".as_ref(),
-    base.key().to_bytes().as_ref()
+    base.key().to_bytes().as_ref(),
     ],
-    bump = bump,
-    payer = payer
+    bump,
+    payer = payer,
+    space = 8 + MerkleDistributor::LEN,
     )]
     pub distributor: Account<'info, MerkleDistributor>,
 
@@ -231,8 +233,9 @@ pub struct Claim<'info> {
     distributor.key().to_bytes().as_ref(),
     claimant.key().to_bytes().as_ref()
     ],
-    bump = _bump,
-    payer = payer
+    bump,
+    payer = payer,
+    space = 8 + ClaimStatus::LEN,
     )]
     pub claim_status: Account<'info, ClaimStatus>,
 
@@ -245,7 +248,8 @@ pub struct Claim<'info> {
     pub to: Account<'info, TokenAccount>,
 
     /// Who is claiming the tokens.
-    pub claimant: UncheckedAccount<'info>,
+    // #[account(address = to.owner @ ErrorCode::OwnerMismatch)]
+    pub claimant: Signer<'info>,
 
     /// Payer of the claim.
     #[account(mut)]
@@ -273,25 +277,29 @@ pub struct UpdateAdminAuth<'info> {
 #[derive(Default)]
 pub struct MerkleDistributor {
     /// Base key used to generate the PDA.
-    pub base: Pubkey,
+    pub base: Pubkey, // 32
     /// Admin key used to generate the PDA.
-    pub admin_auth: Pubkey,
+    pub admin_auth: Pubkey, // 32
     /// Bump seed.
-    pub bump: u8,
+    pub bump: u8, // 1
 
     /// The 256-bit merkle root.
-    pub root: [u8; 32],
+    pub root: [u8; 32], // 32
 
     /// [Mint] of the token to be distributed.
-    pub mint: Pubkey,
+    pub mint: Pubkey, // 32
     /// Maximum number of tokens that can ever be claimed from this [MerkleDistributor].
-    pub max_total_claim: u64,
+    pub max_total_claim: u64, // 8
     /// Maximum number of nodes that can ever be claimed from this [MerkleDistributor].
-    pub max_num_nodes: u64,
+    pub max_num_nodes: u64, // 8
     /// Total amount of tokens that have been claimed.
-    pub total_amount_claimed: u64,
+    pub total_amount_claimed: u64, // 8
     /// Number of nodes that have been claimed.
-    pub num_nodes_claimed: u64,
+    pub num_nodes_claimed: u64, // 8
+}
+
+impl MerkleDistributor {
+    pub const LEN: usize = 161;
 }
 
 /// Holds whether or not a claimant has claimed tokens.
@@ -301,11 +309,15 @@ pub struct MerkleDistributor {
 #[derive(Default)]
 pub struct ClaimStatus {
     /// Authority that claimed the tokens.
-    pub claimant: Pubkey,
+    pub claimant: Pubkey, // 64
     /// When the tokens were claimed.
-    pub claimed_at: i64,
+    pub claimed_at: i64, // 8
     /// Amount of tokens claimed.
-    pub claimed_amount: u64,
+    pub claimed_amount: u64, // 8
+}
+
+impl ClaimStatus {
+    pub const LEN: usize = 80;
 }
 
 /// Emitted when tokens are claimed.
@@ -321,7 +333,7 @@ pub struct ClaimedEvent {
 }
 
 /// Error codes.
-#[error]
+#[error_code]
 pub enum ErrorCode {
     #[msg("Invalid Merkle proof.")]
     InvalidProof,
@@ -340,5 +352,5 @@ pub enum ErrorCode {
     #[msg("no claimable amount")]
     NoClaimableAmount,
     #[msg("update root no change")]
-    UpdateRootNoChange
+    UpdateRootNoChange,
 }

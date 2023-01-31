@@ -5,10 +5,6 @@
 [![Build Status](https://img.shields.io/github/workflow/status/saber-hq/merkle-distributor/Rust/master)](https://github.com/saber-hq/merkle-distributor/actions/workflows/rust.yml?query=branch%3Amaster)
 [![Contributors](https://img.shields.io/github/contributors/saber-hq/merkle-distributor)](https://github.com/saber-hq/merkle-distributor/graphs/contributors)
 
-<p align="center">
-    <img src="https://raw.githubusercontent.com/saber-hq/merkle-distributor/master/images/merkle-distributor.png" />
-</p>
-
 A program for distributing tokens efficiently via uploading a [Merkle root](https://en.wikipedia.org/wiki/Merkle_tree).
 
 This program is largely based off of [Uniswap's Merkle Distributor](https://github.com/Uniswap/merkle-distributor).

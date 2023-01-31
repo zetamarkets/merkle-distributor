@@ -32,6 +32,13 @@ export type CreateDistributorArgs = {
   base?: Keypair;
 };
 
+export type UpdateDistributorArgs = {
+  root: Buffer;
+  maxTotalClaim: u64;
+  maxNumNodes: u64;
+  adminAuth: Keypair;
+};
+
 export type PendingDistributor = {
   bump: number;
   base: PublicKey;
@@ -41,7 +48,6 @@ export type PendingDistributor = {
 };
 
 export type ClaimArgs = {
-  rootVersion: u64;
   index: u64;
   amount: u64;
   proof: Buffer[];
