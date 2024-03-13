@@ -1,28 +1,16 @@
-import { newProgram } from "@saberhq/anchor-contrib";
-import type { AugmentedProvider, Provider } from "@saberhq/solana-contrib";
-import { SolanaAugmentedProvider } from "@saberhq/solana-contrib";
-import type { PublicKey, Signer } from "@solana/web3.js";
-
+import * as anchor from "@coral-xyz/anchor";
+import type { PublicKey } from "@solana/web3.js";
 import { PROGRAM_ID } from "./constants";
-import { MerkleDistributorJSON } from "./idls/merkle_distributor";
-import type {
-  CreateDistributorArgs,
-  MerkleDistributorProgram,
-  PendingDistributor,
-} from "./types";
+import { MerkleDistributor } from "../target/types/merkle_distributor";
+import idl from "../target/idl/merkle_distributor.json";
+import type { CreateDistributorArgs, Distributor } from "./types";
 import { MerkleDistributorWrapper } from "./wrapper";
 
 export class MerkleDistributorSDK {
   constructor(
-    readonly provider: AugmentedProvider,
-    readonly program: MerkleDistributorProgram
+    readonly provider: anchor.AnchorProvider,
+    readonly program: anchor.Program<MerkleDistributor>
   ) {}
-
-  withSigner(signer: Signer): MerkleDistributorSDK {
-    return MerkleDistributorSDK.load({
-      provider: this.provider.withSigner(signer),
-    });
-  }
 
   /**
    * Loads the SDK.
@@ -32,15 +20,14 @@ export class MerkleDistributorSDK {
     provider,
   }: {
     // Provider
-    provider: Provider;
+    provider: anchor.AnchorProvider;
   }): MerkleDistributorSDK {
-    const aug = new SolanaAugmentedProvider(provider);
     return new MerkleDistributorSDK(
-      aug,
-      newProgram<MerkleDistributorProgram>(
-        MerkleDistributorJSON,
+      provider,
+      new anchor.Program<MerkleDistributor>(
+        idl as unknown as MerkleDistributor,
         PROGRAM_ID,
-        aug
+        provider
       )
     );
   }
@@ -55,11 +42,11 @@ export class MerkleDistributorSDK {
 
   /**
    * Create a merkle distributor.
-   * @returns {PendingDistributor}
+   * @returns {Distributor}
    */
   async createDistributor(
     args: Omit<CreateDistributorArgs, "sdk">
-  ): Promise<PendingDistributor> {
+  ): Promise<Distributor> {
     return await MerkleDistributorWrapper.createDistributor({
       sdk: this,
       ...args,

@@ -15,36 +15,37 @@
 //! The Merkle distributor program and SDK is distributed under the GPL v3.0 license.
 
 use anchor_lang::prelude::*;
+use anchor_spl::associated_token::get_associated_token_address;
 use anchor_spl::token::{self, Mint, Token, TokenAccount};
-use vipers::prelude::*;
+use zeta_staking::program::ZetaStaking;
 
 pub mod merkle_proof;
 
-declare_id!("AKnD97G9JDc334HV3ZoQoj79ogJDVsjaAW5UGPHraSvZ");
+declare_id!("5Ypn3sGFXCpQT7xptYezfF3hgXak59PQHZBoSsch4Sbb");
 
 /// The [merkle_distributor] program.
 #[program]
 pub mod merkle_distributor {
     #[allow(deprecated)]
-    use vipers::assert_ata;
-
     use super::*;
 
     /// Creates a new [MerkleDistributor].
     /// After creating this [MerkleDistributor], the account should be seeded with tokens via its ATA.
     pub fn new_distributor(
         ctx: Context<NewDistributor>,
-        _bump: u8,
         root: [u8; 32],
         max_total_claim: u64,
         max_num_nodes: u64,
+        claim_start_ts: u64,
+        claim_end_ts: u64,
+        stake_claim: bool,
     ) -> Result<()> {
         let distributor = &mut ctx.accounts.distributor;
 
         distributor.base = ctx.accounts.base.key();
         distributor.admin_auth = ctx.accounts.admin_auth.key();
 
-        distributor.bump = unwrap_bump!(ctx, "distributor");
+        distributor.bump = ctx.bumps.distributor;
 
         distributor.root = root;
         distributor.mint = ctx.accounts.mint.key();
@@ -53,6 +54,11 @@ pub mod merkle_distributor {
         distributor.max_num_nodes = max_num_nodes;
         distributor.total_amount_claimed = 0;
         distributor.num_nodes_claimed = 0;
+
+        assert!(claim_end_ts > claim_start_ts);
+        distributor.claim_start_ts = claim_start_ts;
+        distributor.claim_end_ts = claim_end_ts;
+        distributor.stake_claim = stake_claim;
 
         Ok(())
     }
@@ -64,7 +70,7 @@ pub mod merkle_distributor {
         max_num_nodes: u64,
     ) -> Result<()> {
         let distributor = &mut ctx.accounts.distributor;
-        require!(distributor.root != root, UpdateRootNoChange);
+        require!(distributor.root != root, ErrorCode::UpdateRootNoChange);
 
         distributor.root = root;
         distributor.max_total_claim = max_total_claim;
@@ -74,20 +80,40 @@ pub mod merkle_distributor {
         Ok(())
     }
 
+    pub fn update_distributor_claim_window(
+        ctx: Context<UpdateDistributor>,
+        claim_start_ts: u64,
+        claim_end_ts: u64,
+    ) -> Result<()> {
+        let distributor = &mut ctx.accounts.distributor;
+        assert!(claim_end_ts > claim_start_ts);
+        distributor.claim_start_ts = claim_start_ts;
+        distributor.claim_end_ts = claim_end_ts;
+
+        Ok(())
+    }
+
     /// Claims tokens from the [MerkleDistributor].
     #[allow(deprecated)]
-    pub fn claim(
-        ctx: Context<Claim>,
-        _bump: u8,
-        index: u64,
-        amount: u64,
-        proof: Vec<[u8; 32]>,
-    ) -> Result<()> {
+    pub fn claim(ctx: Context<Claim>, index: u64, amount: u64, proof: Vec<[u8; 32]>) -> Result<()> {
+        let distributor = &ctx.accounts.distributor;
+        require!(
+            distributor.stake_claim == false,
+            ErrorCode::MustClaimDirectToStake
+        );
+        let now = Clock::get()?.unix_timestamp as u64;
+        require!(
+            now >= distributor.claim_start_ts && now <= distributor.claim_end_ts,
+            ErrorCode::OutsideClaimWindow
+        );
+
         let claim_status = &mut ctx.accounts.claim_status;
-        require!(claim_status.claimed_amount < amount, NoClaimableAmount);
+        require!(
+            claim_status.claimed_amount < amount,
+            ErrorCode::NoClaimableAmount
+        );
 
         let claimant_account = &ctx.accounts.claimant;
-        let distributor = &ctx.accounts.distributor;
 
         // Check whether payer is the admin or the claimant
         if (ctx.accounts.payer.key() != claimant_account.key())
@@ -96,7 +122,7 @@ pub mod merkle_distributor {
             return Err(ErrorCode::Unauthorized)?;
         }
 
-        require!(claimant_account.is_signer, Unauthorized);
+        require!(claimant_account.is_signer, ErrorCode::Unauthorized);
         // Verify the merkle proof.
         let node = anchor_lang::solana_program::keccak::hashv(&[
             &index.to_le_bytes(),
@@ -105,7 +131,7 @@ pub mod merkle_distributor {
         ]);
         require!(
             merkle_proof::verify(proof, distributor.root, node.0),
-            InvalidProof
+            ErrorCode::InvalidProof
         );
 
         let claim_amount = amount.checked_sub(claim_status.claimed_amount).unwrap();
@@ -122,15 +148,12 @@ pub mod merkle_distributor {
             &[ctx.accounts.distributor.bump],
         ];
 
-        assert_ata!(
-            ctx.accounts.from,
-            ctx.accounts.distributor,
-            distributor.mint
-        );
+        let ata = get_associated_token_address(&ctx.accounts.distributor.key(), &distributor.mint);
         require!(
-            ctx.accounts.to.owner == claimant_account.key(),
-            OwnerMismatch
+            ata == ctx.accounts.from.key(),
+            ErrorCode::InvalidDistributorTokenAccount
         );
+
         token::transfer(
             CpiContext::new(
                 ctx.accounts.token_program.to_account_info(),
@@ -145,16 +168,20 @@ pub mod merkle_distributor {
         )?;
 
         let distributor = &mut ctx.accounts.distributor;
-        distributor.total_amount_claimed =
-            unwrap_int!(distributor.total_amount_claimed.checked_add(claim_amount));
+
+        distributor.total_amount_claimed = distributor
+            .total_amount_claimed
+            .checked_add(claim_amount)
+            .unwrap();
         require!(
             distributor.total_amount_claimed <= distributor.max_total_claim,
-            ExceededMaxClaim
+            ErrorCode::ExceededMaxClaim
         );
-        distributor.num_nodes_claimed = unwrap_int!(distributor.num_nodes_claimed.checked_add(1));
+
+        distributor.num_nodes_claimed = distributor.num_nodes_claimed.checked_add(1).unwrap();
         require!(
             distributor.num_nodes_claimed <= distributor.max_num_nodes,
-            ExceededMaxNumNodes
+            ErrorCode::ExceededMaxNumNodes
         );
 
         emit!(ClaimedEvent {
@@ -163,6 +190,161 @@ pub mod merkle_distributor {
             claimant: claimant_account.key(),
             claim_amount: claim_amount,
         });
+        Ok(())
+    }
+
+    /// Claims tokens from the [MerkleDistributor] direct to stake.
+    #[allow(deprecated)]
+    pub fn claim_stake(
+        ctx: Context<ClaimStake>,
+        index: u64,
+        amount: u64,
+        proof: Vec<[u8; 32]>,
+        zeta_stake_bit_to_use: u8,
+        stake_acc_name: String,
+    ) -> Result<()> {
+        let distributor = &ctx.accounts.distributor;
+        require!(
+            distributor.stake_claim == true,
+            ErrorCode::MustClaimDirectToWallet
+        );
+        let now = Clock::get()?.unix_timestamp as u64;
+        require!(
+            now >= distributor.claim_start_ts && now <= distributor.claim_end_ts,
+            ErrorCode::OutsideClaimWindow
+        );
+
+        let claim_status = &mut ctx.accounts.claim_status;
+        require!(
+            claim_status.claimed_amount < amount,
+            ErrorCode::NoClaimableAmount
+        );
+
+        let claimant_account = &ctx.accounts.claimant;
+
+        // Check whether payer is the admin or the claimant
+        if (ctx.accounts.payer.key() != claimant_account.key())
+            && (ctx.accounts.payer.key() != distributor.admin_auth)
+        {
+            return Err(ErrorCode::Unauthorized)?;
+        }
+
+        require!(claimant_account.is_signer, ErrorCode::Unauthorized);
+        // Verify the merkle proof.
+        let node = anchor_lang::solana_program::keccak::hashv(&[
+            &index.to_le_bytes(),
+            &claimant_account.key().to_bytes(),
+            &amount.to_le_bytes(),
+        ]);
+        require!(
+            merkle_proof::verify(proof, distributor.root, node.0),
+            ErrorCode::InvalidProof
+        );
+
+        let claim_amount = amount.checked_sub(claim_status.claimed_amount).unwrap();
+
+        // Mark it claimed and send the tokens.
+        claim_status.claimed_amount = amount;
+        let clock = Clock::get()?;
+        claim_status.claimed_at = clock.unix_timestamp;
+        claim_status.claimant = claimant_account.key();
+
+        let seeds = [
+            b"MerkleDistributor".as_ref(),
+            &distributor.base.to_bytes(),
+            &[ctx.accounts.distributor.bump],
+        ];
+
+        let ata = get_associated_token_address(&ctx.accounts.distributor.key(), &distributor.mint);
+        require!(
+            ata == ctx.accounts.from.key(),
+            ErrorCode::InvalidDistributorTokenAccount
+        );
+
+        token::transfer(
+            CpiContext::new(
+                ctx.accounts.token_program.to_account_info(),
+                token::Transfer {
+                    from: ctx.accounts.from.to_account_info(),
+                    to: ctx.accounts.to.to_account_info(),
+                    authority: ctx.accounts.distributor.to_account_info(),
+                },
+            )
+            .with_signer(&[&seeds[..]]),
+            claim_amount,
+        )?;
+
+        let cpi_accs = zeta_staking::cpi::accounts::Stake {
+            protocol_state: ctx.accounts.cpi_protocol_state.to_account_info(),
+            zeta_token_account: ctx.accounts.to.to_account_info(),
+            stake_account_manager: ctx.accounts.cpi_stake_account_manager.to_account_info(),
+            stake_account: ctx.accounts.cpi_stake_account.to_account_info(),
+            stake_vault: ctx.accounts.cpi_stake_vault.to_account_info(),
+            authority: ctx.accounts.claimant.to_account_info(),
+            zeta_mint: ctx.accounts.zeta_mint.to_account_info(),
+            system_program: ctx.accounts.system_program.to_account_info(),
+            token_program: ctx.accounts.token_program.to_account_info(),
+        };
+        let cpi_ctx = CpiContext::new(ctx.accounts.zeta_staking.to_account_info(), cpi_accs);
+        zeta_staking::cpi::stake(
+            cpi_ctx,
+            zeta_stake_bit_to_use,
+            ctx.accounts.cpi_protocol_state.max_n_epochs,
+            claim_amount,
+            stake_acc_name,
+        )?;
+
+        let distributor = &mut ctx.accounts.distributor;
+
+        distributor.total_amount_claimed = distributor
+            .total_amount_claimed
+            .checked_add(claim_amount)
+            .unwrap();
+        require!(
+            distributor.total_amount_claimed <= distributor.max_total_claim,
+            ErrorCode::ExceededMaxClaim
+        );
+
+        distributor.num_nodes_claimed = distributor.num_nodes_claimed.checked_add(1).unwrap();
+        require!(
+            distributor.num_nodes_claimed <= distributor.max_num_nodes,
+            ErrorCode::ExceededMaxNumNodes
+        );
+
+        emit!(ClaimedEvent {
+            root: distributor.root,
+            index,
+            claimant: claimant_account.key(),
+            claim_amount: claim_amount,
+        });
+        Ok(())
+    }
+
+    pub fn admin_claim_after_expiry(ctx: Context<AdminClaimAfterExpiry>) -> Result<()> {
+        let distributor = &mut ctx.accounts.distributor;
+        let now = Clock::get()?.unix_timestamp;
+        require!(now as u64 > distributor.claim_end_ts, ErrorCode::InsideClaimWindow);
+
+        let seeds = [
+            b"MerkleDistributor".as_ref(),
+            &distributor.base.to_bytes(),
+            &[ctx.accounts.distributor.bump],
+        ];
+
+        // Transfer remaining tokens in the ata to admin auth ata instead.
+        token::transfer(
+            CpiContext::new(
+                ctx.accounts.token_program.to_account_info(),
+                token::Transfer {
+                    from: ctx.accounts.from.to_account_info(),
+                    to: ctx.accounts.to.to_account_info(),
+                    authority: ctx.accounts.distributor.to_account_info(),
+                },
+            )
+            .with_signer(&[&seeds[..]]),
+            ctx.accounts.from.amount,
+        )?;
+
         Ok(())
     }
 
@@ -219,7 +401,6 @@ pub struct UpdateDistributor<'info> {
 
 /// [merkle_distributor::claim] accounts.
 #[derive(Accounts)]
-#[instruction(_bump: u8)]
 pub struct Claim<'info> {
     /// The [MerkleDistributor].
     #[account(mut)]
@@ -248,7 +429,7 @@ pub struct Claim<'info> {
     pub to: Account<'info, TokenAccount>,
 
     /// Who is claiming the tokens.
-    // #[account(address = to.owner @ ErrorCode::OwnerMismatch)]
+    #[account(address = to.owner @ ErrorCode::OwnerMismatch)]
     pub claimant: Signer<'info>,
 
     /// Payer of the claim.
@@ -257,6 +438,98 @@ pub struct Claim<'info> {
 
     /// The [System] program.
     pub system_program: Program<'info, System>,
+
+    /// SPL [Token] program.
+    pub token_program: Program<'info, Token>,
+}
+
+/// [merkle_distributor::claim_stake] accounts.
+#[derive(Accounts)]
+pub struct ClaimStake<'info> {
+    /// The [MerkleDistributor].
+    #[account(mut)]
+    pub distributor: Account<'info, MerkleDistributor>,
+
+    /// Status of the claim.
+    #[account(
+    init_if_needed,
+    seeds = [
+    b"ClaimStatus".as_ref(),
+    distributor.key().to_bytes().as_ref(),
+    claimant.key().to_bytes().as_ref()
+    ],
+    bump,
+    payer = payer,
+    space = 8 + ClaimStatus::LEN,
+    )]
+    pub claim_status: Account<'info, ClaimStatus>,
+
+    /// Distributor ATA containing the tokens to distribute.
+    #[account(mut)]
+    pub from: Account<'info, TokenAccount>,
+
+    /// Account to send the claimed tokens to.
+    #[account(mut)]
+    pub to: Account<'info, TokenAccount>,
+
+    /// Zeta staking account
+    pub zeta_staking: Program<'info, ZetaStaking>,
+
+    /// Zeta protocol state
+    #[account(mut)]
+    pub cpi_protocol_state: Account<'info, zeta_staking::state::ProtocolState>,
+
+    /// Zeta staking stake manager
+    #[account(mut)]
+    pub cpi_stake_account_manager: Account<'info, zeta_staking::state::StakeAccountManager>,
+
+    /// CHECK: Zeta staking stake account PDA will be uninitialized and checked in the CPI
+    #[account(mut)]
+    pub cpi_stake_account: AccountInfo<'info>,
+
+    /// CHECK: Zeta staking stake vault PDA will be uninitialized and checked in the CPI
+    #[account(mut)]
+    pub cpi_stake_vault: AccountInfo<'info>,
+
+    /// Zeta mint, address is checked in the CPI
+    pub zeta_mint: Account<'info, Mint>,
+
+    /// Who is claiming the tokens.
+    #[account(address = to.owner @ ErrorCode::OwnerMismatch)]
+    pub claimant: Signer<'info>,
+
+    /// Payer of the claim.
+    #[account(mut)]
+    pub payer: Signer<'info>,
+
+    /// The [System] program.
+    pub system_program: Program<'info, System>,
+
+    /// SPL [Token] program.
+    pub token_program: Program<'info, Token>,
+}
+
+/// [merkle_distributor::admin_claim_after_expiry] accounts.
+#[derive(Accounts)]
+pub struct AdminClaimAfterExpiry<'info> {
+    /// The [MerkleDistributor].
+    #[account(mut, has_one = admin_auth @ ErrorCode::DistributorAdminMismatch)]
+    pub distributor: Account<'info, MerkleDistributor>,
+
+    /// Distributor ATA containing the tokens to distribute.
+    #[account(mut)]
+    pub from: Account<'info, TokenAccount>,
+
+    /// Account to send the claimed tokens to.
+    #[account(mut)]
+    pub to: Account<'info, TokenAccount>,
+
+    /// Who is claiming the tokens and the payer.
+    #[account(
+        mut, 
+        address = to.owner @ ErrorCode::OwnerMismatch
+    )]
+    pub admin_auth: Signer<'info>,
 
     /// SPL [Token] program.
     pub token_program: Program<'info, Token>,
@@ -296,10 +569,16 @@ pub struct MerkleDistributor {
     pub total_amount_claimed: u64, // 8
     /// Number of nodes that have been claimed.
     pub num_nodes_claimed: u64, // 8
+    /// Timestamp you can start claiming // 8
+    pub claim_start_ts: u64,
+    /// Timestamp you can no longer claim at // 8
+    pub claim_end_ts: u64,
+    /// Whether this merkle tree will be directly staked // 1
+    pub stake_claim: bool,
 }
 
 impl MerkleDistributor {
-    pub const LEN: usize = 161;
+    pub const LEN: usize = 178;
 }
 
 /// Holds whether or not a claimant has claimed tokens.
@@ -353,4 +632,14 @@ pub enum ErrorCode {
     NoClaimableAmount,
     #[msg("update root no change")]
     UpdateRootNoChange,
+    #[msg("Invalid distributor token account")]
+    InvalidDistributorTokenAccount,
+    #[msg("Outside the claim window")]
+    OutsideClaimWindow,
+    #[msg("Must claim tokens direct to stake")]
+    MustClaimDirectToStake,
+    #[msg("Must claim tokens direct to wallet")]
+    MustClaimDirectToWallet,
+    #[msg("Can only admin claim after the claim window is over")]
+    InsideClaimWindow,
 }

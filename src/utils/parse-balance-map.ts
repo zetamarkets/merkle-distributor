@@ -1,4 +1,5 @@
-import { u64 } from "@saberhq/token-utils";
+import * as anchor from "@coral-xyz/anchor";
+
 import { PublicKey } from "@solana/web3.js";
 import BN from "bn.js";
 import invariant from "tiny-invariant";
@@ -15,7 +16,7 @@ export interface MerkleDistributorInfo {
   claims: {
     [account: string]: {
       index: number;
-      amount: u64;
+      amount: anchor.BN;
       proof: Buffer[];
     };
   };
@@ -33,8 +34,8 @@ export function parseBalanceMap(balances: NewFormat[]): MerkleDistributorInfo {
     if (memo[account.toString()]) {
       throw new Error(`Duplicate address: ${account.toString()}`);
     }
-    const parsedNum = new u64(earnings);
-    if (parsedNum.lte(new u64(0))) {
+    const parsedNum = new anchor.BN(earnings);
+    if (parsedNum.lte(new anchor.BN(0))) {
       throw new Error(`Invalid amount for account: ${account.toString()}`);
     }
 
@@ -61,7 +62,7 @@ export function parseBalanceMap(balances: NewFormat[]): MerkleDistributorInfo {
   // generate claims
   const claims = sortedAddresses.reduce<{
     [address: string]: {
-      amount: u64;
+      amount: anchor.BN;
       index: number;
       proof: Buffer[];
       flags?: { [flag: string]: boolean };
