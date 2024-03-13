@@ -7,7 +7,7 @@ import {
   logProtocolState,
   testSetup,
   objectEquals,
-} from "../deps/zeta-staking/tests/zeta-staking/utils";
+} from "../deps/zeta-staking/tests/utils";
 
 import { assert } from "chai";
 
