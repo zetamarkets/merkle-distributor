@@ -1,0 +1,3 @@
+[submodule "deps/zeta-staking"]
+	path = deps/zeta-staking
+	url = git@github.com:zetamarkets/zeta-staking.git

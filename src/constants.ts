@@ -1,16 +1,14 @@
-import { SuperCoder } from "@saberhq/anchor-contrib";
+import * as anchor from "@coral-xyz/anchor";
 import { PublicKey } from "@solana/web3.js";
 
-import type { MerkleDistributorTypes } from ".";
-import { MerkleDistributorJSON } from "./idls/merkle_distributor";
+import idl from "../target/idl/merkle_distributor.json";
 
 export const PROGRAM_ID = new PublicKey(
-  "AKnD97G9JDc334HV3ZoQoj79ogJDVsjaAW5UGPHraSvZ"
+  "5Ypn3sGFXCpQT7xptYezfF3hgXak59PQHZBoSsch4Sbb"
 );
 
 export const MERKLE_DISTRIBUTOR_PROGRAM_ID = PROGRAM_ID;
 
-export const MERKLE_DISTRIBUTOR_CODER = new SuperCoder<MerkleDistributorTypes>(
-  MERKLE_DISTRIBUTOR_PROGRAM_ID,
-  MerkleDistributorJSON
+export const MERKLE_DISTRIBUTOR_CODER = new anchor.BorshCoder(
+  idl as anchor.Idl
 );

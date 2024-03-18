@@ -1,10 +1,18 @@
 {
-  "extends": "@saberhq/tsconfig/tsconfig.lib.json",
   "compilerOptions": {
-    "module": "CommonJS",
     "types": ["mocha"],
+    "module": "commonjs",
+    "target": "es2019",
+    "declaration": true,
+    "outDir": "./dist",
+    "esModuleInterop": true,
     "resolveJsonModule": true,
-    "strict": false
+    "skipLibCheck": true
   },
-  "include": ["./src", "./tests", "scripts/"]
+  "include": ["./src/**/*"],
+  "exclude": ["**/node_modules/**/*", "dist"],
+  "typedocOptions": {
+    "entryPoints": ["src/index.ts"],
+    "out": "docs"
+  }
 }

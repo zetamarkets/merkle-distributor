@@ -1,15 +1,12 @@
-import { chaiSolana } from "@saberhq/chai-solana";
-import { u64 } from "@saberhq/token-utils";
-import { Keypair, LAMPORTS_PER_SOL } from "@solana/web3.js";
-import chai, { expect } from "chai";
-import invariant from "tiny-invariant";
+import * as anchor from "@coral-xyz/anchor";
+import { assert } from "chai";
 
 import { parseBalanceMap } from "../src/utils";
-import { makeSDK } from "./testutils";
+import { makeSDK } from "./utils";
+import { Keypair, LAMPORTS_PER_SOL } from "@solana/web3.js";
+import invariant from "tiny-invariant";
 
-chai.use(chaiSolana);
-
-describe("parse BalanceMap", () => {
+describe("big tree", () => {
   const sdk = makeSDK();
   const { provider } = sdk;
 
@@ -22,7 +19,7 @@ describe("parse BalanceMap", () => {
   let claims: {
     [account: string]: {
       index: number;
-      amount: u64;
+      amount: anchor.BN;
       proof: Buffer[];
     };
   };
@@ -37,16 +34,13 @@ describe("parse BalanceMap", () => {
       })
     );
 
-    const {
-      claims: innerClaims,
-      tokenTotal,
-    } = parseBalanceMap(
+    const { claims: innerClaims, tokenTotal } = parseBalanceMap(
       keypairs.map((kp, i) => ({
         address: kp.publicKey.toString(),
-        earnings: new u64("1000000").mul(new u64(i + 1)).toString(),
+        earnings: new anchor.BN("1000000").mul(new anchor.BN(i + 1)).toString(),
       }))
     );
-    expect(tokenTotal).to.equal("6000000");
+    assert.equal(tokenTotal, "6000000");
 
     claims = innerClaims;
   });
@@ -56,10 +50,10 @@ describe("parse BalanceMap", () => {
     invariant(keypairs[1], "keypair must exist");
     invariant(keypairs[2], "keypair must exist");
 
-    expect(claims).to.deep.eq({
+    let expectedObj = {
       [keypairs[0].publicKey.toString()]: {
         index: 0,
-        amount: new u64("1000000"),
+        amount: new anchor.BN("1000000"),
         proof: [
           Buffer.from(
             "607e67765bcf4177e16fccd6149a4cfcd05d291ab664d24b8f7455d08aa121af",
@@ -69,7 +63,7 @@ describe("parse BalanceMap", () => {
       },
       [keypairs[1].publicKey.toString()]: {
         index: 1,
-        amount: new u64("2000000"),
+        amount: new anchor.BN("2000000"),
         proof: [
           Buffer.from(
             "0e21270c3d6d0301cce89f02f6b1c0728836b240263eb18026a7e8f0888d1cb3",
@@ -83,7 +77,7 @@ describe("parse BalanceMap", () => {
       },
       [keypairs[2].publicKey.toString()]: {
         index: 2,
-        amount: new u64("3000000"),
+        amount: new anchor.BN("3000000"),
         proof: [
           Buffer.from(
             "064d3da266f8756627ec7afda54dbfa8ac806030d2092b193840dfc392486468",
@@ -95,6 +89,16 @@ describe("parse BalanceMap", () => {
           ),
         ],
       },
-    });
+    };
+
+    for (let i = 0; i < keypairs.length; i++) {
+      let pk = keypairs[0].publicKey.toString();
+      assert.equal(claims[pk].index, expectedObj[pk].index);
+      assert.equal(
+        claims[pk].amount.toString(),
+        expectedObj[pk].amount.toString()
+      );
+      assert.ok(claims[pk].proof.toString(), expectedObj[pk].proof.toString());
+    }
   });
 });

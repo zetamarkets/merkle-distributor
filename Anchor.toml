@@ -1,24 +1,20 @@
-anchor_version = "0.24.2"
-solana_version = "1.9.0"
+[toolchain]
 
-[registry]
-url = "https://anchor.projectserum.com"
-
-[provider]
-cluster = "localnet"
-wallet = "./tests/test-key.json"
-
-[programs.mainnet]
-merkle_distributor = "AKnD97G9JDc334HV3ZoQoj79ogJDVsjaAW5UGPHraSvZ"
-
-[programs.devnet]
-merkle_distributor = "51WuMUGPN9dR8Fu9jtn8ZZokfjq13uBYhRBRWn3sZyvR"
-
-[programs.testnet]
-merkle_distributor = "51WuMUGPN9dR8Fu9jtn8ZZokfjq13uBYhRBRWn3sZyvR"
+[features]
+seeds = false
+skip-lint = false
 
 [programs.localnet]
-merkle_distributor = "51WuMUGPN9dR8Fu9jtn8ZZokfjq13uBYhRBRWn3sZyvR"
+merkle_distributor = "5Ypn3sGFXCpQT7xptYezfF3hgXak59PQHZBoSsch4Sbb"
+
+[[test.genesis]]
+address = "8bk6VdmdDnfrq5DeZz8gBzAgffEoc7C51SqXJnxmuSFV"
+program = "./deps/zeta-staking/target/deploy/zeta_staking.so"
+
+[provider]
+cluster = "Localnet"
+wallet = "~/.config/solana/id.json"
 
 [scripts]
-test = "yarn mocha"
+test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000"
+
