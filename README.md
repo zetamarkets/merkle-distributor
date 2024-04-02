@@ -1,4 +1,6 @@
-# merkle-distributor
+# zeta-merkle-distributor
+
+## Based off
 
 [![Crates.io](https://img.shields.io/crates/v/merkle-distributor)](https://crates.io/crates/merkle-distributor)
 [![License](https://img.shields.io/crates/l/merkle-distributor)](https://github.com/saber-hq/merkle-distributor/blob/master/LICENSE.txt)
@@ -16,6 +18,10 @@ Although Solana has low fees for executing transactions, it requires staking tok
 The Merkle distributor, pioneered by [Uniswap](https://github.com/Uniswap/merkle-distributor), solves this issue by deriving a 256-bit "root hash" from a tree of balances. This puts the gas cost on the claimer. Solana has the additional advantage of being able to reclaim rent from closed token accounts, so the net cost to the user should be around `0.000010 SOL` (at the time of writing).
 
 The Merkle distributor is also significantly easier to manage from an operations perspective, since one does not need to send a transaction to each individual address that may be redeeming tokens.
+
+## Zeta changes
+
+This has been forked to add entry points for admins to claim after the merkle tree has expired, update claim windows of merkle trees, and for some merkle trees to require directly claiming into the zeta-staking program.
 
 ## License
 
