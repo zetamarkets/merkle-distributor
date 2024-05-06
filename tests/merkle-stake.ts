@@ -21,7 +21,7 @@ describe("merkle stake", () => {
 
   const zetaStakingProgram = new anchor.Program<ZetaStaking>(
     idl as unknown as ZetaStaking,
-    new PublicKey("8bk6VdmdDnfrq5DeZz8gBzAgffEoc7C51SqXJnxmuSFV"),
+    new PublicKey("GowK1APjsjupJpaTQPgeuko7VyzLKKW8i3KQ7Lp11jek"),
     provider
   );
 

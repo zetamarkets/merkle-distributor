@@ -8,7 +8,7 @@ skip-lint = false
 merkle_distributor = "5Ypn3sGFXCpQT7xptYezfF3hgXak59PQHZBoSsch4Sbb"
 
 [[test.genesis]]
-address = "8bk6VdmdDnfrq5DeZz8gBzAgffEoc7C51SqXJnxmuSFV"
+address = "GowK1APjsjupJpaTQPgeuko7VyzLKKW8i3KQ7Lp11jek"
 program = "./deps/zeta-staking/target/deploy/zeta_staking.so"
 
 [provider]

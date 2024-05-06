@@ -39,6 +39,9 @@ pub mod merkle_distributor {
         claim_start_ts: u64,
         claim_end_ts: u64,
         stake_claim: bool,
+        immediate_claim_percentage: u64,
+        later_claim_percentage: u64,
+        later_claim_offset_seconds: u64,
     ) -> Result<()> {
         let distributor = &mut ctx.accounts.distributor;
 
@@ -59,6 +62,11 @@ pub mod merkle_distributor {
         distributor.claim_start_ts = claim_start_ts;
         distributor.claim_end_ts = claim_end_ts;
         distributor.stake_claim = stake_claim;
+
+        assert!(later_claim_offset_seconds + claim_start_ts < claim_end_ts);
+        distributor.immediate_claim_percentage = immediate_claim_percentage;
+        distributor.later_claim_percentage = later_claim_percentage;
+        distributor.later_claim_offset_seconds = later_claim_offset_seconds;
 
         Ok(())
     }
@@ -89,6 +97,21 @@ pub mod merkle_distributor {
         assert!(claim_end_ts > claim_start_ts);
         distributor.claim_start_ts = claim_start_ts;
         distributor.claim_end_ts = claim_end_ts;
+
+        Ok(())
+    }
+
+    pub fn update_distributor_claim_percentages(
+        ctx: Context<UpdateDistributor>,
+        immediate_claim_percentage: u64,
+        later_claim_percentage: u64,
+        later_claim_offset_seconds: u64,
+    ) -> Result<()> {
+        let distributor = &mut ctx.accounts.distributor;
+        assert!(later_claim_offset_seconds + distributor.claim_start_ts < distributor.claim_end_ts);
+        distributor.immediate_claim_percentage = immediate_claim_percentage;
+        distributor.later_claim_percentage = later_claim_percentage;
+        distributor.later_claim_offset_seconds = later_claim_offset_seconds;
 
         Ok(())
     }
@@ -154,6 +177,9 @@ pub mod merkle_distributor {
             ErrorCode::InvalidDistributorTokenAccount
         );
 
+        // TODO: Fix this, to use the parameters in the distributor.
+        let transfer_amount = claim_amount * SOME_FACTOR;
+
         token::transfer(
             CpiContext::new(
                 ctx.accounts.token_program.to_account_info(),
@@ -164,7 +190,7 @@ pub mod merkle_distributor {
                 },
             )
             .with_signer(&[&seeds[..]]),
-            claim_amount,
+            transfer_amount,
         )?;
 
         let distributor = &mut ctx.accounts.distributor;
@@ -261,6 +287,9 @@ pub mod merkle_distributor {
             ErrorCode::InvalidDistributorTokenAccount
         );
 
+        // TODO: Fix this, to use the parameters in the distributor.
+        let transfer_amount = claim_amount * SOME_FACTOR;
+
         token::transfer(
             CpiContext::new(
                 ctx.accounts.token_program.to_account_info(),
@@ -271,7 +300,7 @@ pub mod merkle_distributor {
                 },
             )
             .with_signer(&[&seeds[..]]),
-            claim_amount,
+            transfer_amount,
         )?;
 
         let cpi_accs = zeta_staking::cpi::accounts::Stake {
@@ -575,6 +604,12 @@ pub struct MerkleDistributor {
     pub claim_end_ts: u64,
     /// Whether this merkle tree will be directly staked // 1
     pub stake_claim: bool,
+    /// Percentage of allocated tokens you get if you claim immediately, 6dp percentage e.g 60_000000 = 60%
+    pub immediate_claim_percentage: u64,
+    /// Percetange of allocated tokens you get if you claim after some parameterised period, 6dp percentage e.g 60_000000 = 60%
+    pub later_claim_percentage: u64,
+    /// the offset from claim_start_ts in seconds when the later_claim_percentage number kicks in.
+    pub later_claim_offset_seconds: u64,
 }
 
 impl MerkleDistributor {
