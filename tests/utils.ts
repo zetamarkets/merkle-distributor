@@ -34,6 +34,8 @@ export const createAndSeedDistributor = async (
   claimStartTs: anchor.BN,
   claimEndTs: anchor.BN,
   stakeClaim: boolean,
+  immediateClaimPercentage: anchor.BN,
+  laterClaimOffsetSeconds: anchor.BN,
   mint?: PublicKey,
   mintAdmin?: Keypair
 ): Promise<{
@@ -66,21 +68,23 @@ export const createAndSeedDistributor = async (
     claimStartTs,
     claimEndTs,
     stakeClaim,
+    immediateClaimPercentage,
+    laterClaimOffsetSeconds,
   });
 
-  let signers: Keypair[] = [];
+  let payerToUse = (provider.wallet as anchor.Wallet).payer;
   if (mintAdmin) {
-    signers = [mintAdmin];
+    payerToUse = mintAdmin;
   }
+
   // Seed merkle distributor with tokens
   await mintTo(
     provider.connection,
-    (provider.wallet as anchor.Wallet).payer,
+    payerToUse,
     mintToUse,
     distributor.distributorATA,
-    mintAdmin ? mintAdmin.publicKey : provider.wallet.publicKey,
-    maxTotalClaim.toNumber(),
-    signers
+    payerToUse,
+    maxTotalClaim.toNumber()
   );
 
   return {

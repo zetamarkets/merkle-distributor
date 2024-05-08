@@ -59,6 +59,8 @@ export interface DistributorData {
   claimStartTs: anchor.BN;
   claimEndTs: anchor.BN;
   stakeClaim: boolean;
+  immediateClaimPercentage: anchor.BN;
+  laterClaimOffsetSeconds: anchor.BN;
 }
 
 export interface ClaimStatus {

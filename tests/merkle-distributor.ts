@@ -29,7 +29,9 @@ describe("merkle distributor", () => {
         base0,
         new anchor.BN(0),
         new anchor.BN(1809635703),
-        false
+        false,
+        new anchor.BN(100_000000),
+        new anchor.BN(0)
       );
     const { distributor, base, bump } = distributorPending;
     const distributorW = await sdk.loadDistributor(distributor);
@@ -75,7 +77,9 @@ describe("merkle distributor", () => {
       base1,
       new anchor.BN(0),
       new anchor.BN(1809635703),
-      false
+      false,
+      new anchor.BN(100_000000),
+      new anchor.BN(0)
     );
     const distributorW = await sdk.loadDistributor(distributorKey);
 
@@ -125,7 +129,9 @@ describe("merkle distributor", () => {
       base2,
       new anchor.BN(0),
       new anchor.BN(1809635703),
-      false
+      false,
+      new anchor.BN(100_000000),
+      new anchor.BN(0)
     );
 
     const distributorW = await sdk.loadDistributor(distributorKey);
@@ -192,7 +198,9 @@ describe("merkle distributor", () => {
       base3,
       new anchor.BN(0),
       new anchor.BN(1809635703),
-      false
+      false,
+      new anchor.BN(100_000000),
+      new anchor.BN(0)
     );
     const distributorW = await sdk.loadDistributor(distributorKey);
 
@@ -226,7 +234,9 @@ describe("merkle distributor", () => {
       base4,
       new anchor.BN(0),
       new anchor.BN(1809635703),
-      false
+      false,
+      new anchor.BN(100_000000),
+      new anchor.BN(0)
     );
     const distributorW = await sdk.loadDistributor(distributorKey);
 
@@ -279,7 +289,9 @@ describe("merkle distributor", () => {
       base5,
       new anchor.BN(0),
       new anchor.BN(1809635703),
-      false
+      false,
+      new anchor.BN(100_000000),
+      new anchor.BN(0)
     );
 
     const distributorW = await sdk.loadDistributor(distributorKey);

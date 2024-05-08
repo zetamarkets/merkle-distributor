@@ -173,7 +173,6 @@ pub mod merkle_distributor {
             ErrorCode::InvalidDistributorTokenAccount
         );
 
-        // TODO: Fix this, to use the parameters in the distributor.
         let transfer_amount = if now < distributor.claim_start_ts + distributor.later_claim_offset_seconds {
           get_percentage(claim_amount, distributor.immediate_claim_percentage)
         } else {
@@ -608,7 +607,7 @@ pub struct MerkleDistributor {
 }
 
 impl MerkleDistributor {
-    pub const LEN: usize = 178;
+    pub const LEN: usize = 194;
 }
 
 /// Holds whether or not a claimant has claimed tokens.
@@ -644,7 +643,7 @@ pub struct ClaimedEvent {
 // Percentage is 6dp e.g 60% = 60_000000;
 pub fn get_percentage(amount: u64, percentage: u64) -> u64 {
     (amount as u128)
-        .checked_mul(percentage as u128 * 1_000_000)
+        .checked_mul(percentage as u128)
         .unwrap()
         .checked_div(100 * 1_000_000)
         .unwrap()
