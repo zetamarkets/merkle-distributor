@@ -75,6 +75,8 @@ export class MerkleDistributorWrapper {
         args.claimStartTs,
         args.claimEndTs,
         args.stakeClaim,
+        args.immediateClaimPercentage,
+        args.laterClaimOffsetSeconds,
         {
           accounts: {
             base: baseKey.publicKey,
