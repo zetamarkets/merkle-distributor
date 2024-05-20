@@ -118,7 +118,8 @@ describe("distributor-early-and-late-claim", () => {
     }
   });
 
-  it("claim right after window starts for 50% haircut.", async () => {
+  let actualClaimAmountOne = 0;
+  it("claim right after window starts for percetnage haircut.", async () => {
     await sleepUntil(claimStartTs + 2);
 
     const proof = tree.getProof(0, kpOne.publicKey, claimAmountOne);
@@ -131,14 +132,28 @@ describe("distributor-early-and-late-claim", () => {
       signers: [kpOne],
     });
 
+    const slot = await provider.connection.getSlot({ commitment: "processed" });
+    const timestamp = await provider.connection.getBlockTime(slot);
+
+    let estimatedClaimAmount = distributorW.getEstimatedClaimAmount(
+      claimAmountOne.toNumber(),
+      timestamp!
+    );
+
     const claimaintOneTokenAccInfo = await getAccount(
       provider.connection,
       getAssociatedTokenAddressSync(distributorW.data.mint, kpOne.publicKey)
     );
 
-    assert.equal(
-      Number(claimaintOneTokenAccInfo.amount),
-      claimAmountOne.toNumber() * (immediateClaimPercentage / 100)
+    console.log(estimatedClaimAmount);
+    assert.equal(Number(claimaintOneTokenAccInfo.amount), estimatedClaimAmount);
+
+    actualClaimAmountOne = Number(claimaintOneTokenAccInfo.amount);
+
+    console.log(
+      "haircut claim, full amount = 500, clipped amount =",
+      estimatedClaimAmount,
+      actualClaimAmountOne
     );
 
     const claimStatus = await distributorW.getClaimStatus(kpOne.publicKey);
@@ -219,7 +234,12 @@ describe("distributor-early-and-late-claim", () => {
       provider.connection,
       distributorW.distributorATA
     );
-    assert.equal(Number(ataAcc.amount), 250 + 999);
+    assert.equal(
+      Number(ataAcc.amount),
+      claimAmountOne.toNumber() -
+        actualClaimAmountOne +
+        claimAmountThree.toNumber()
+    );
 
     const distributorAdminKp = (
       distributorW.sdk.provider.wallet as anchor.Wallet
@@ -234,6 +254,11 @@ describe("distributor-early-and-late-claim", () => {
       distributorAdminKp.publicKey
     );
     let adminAtaAcc = await getAccount(provider.connection, adminAtaAddr);
-    assert.equal(Number(adminAtaAcc.amount), 250 + 999);
+    assert.equal(
+      Number(adminAtaAcc.amount),
+      claimAmountOne.toNumber() -
+        actualClaimAmountOne +
+        claimAmountThree.toNumber()
+    );
   });
 });

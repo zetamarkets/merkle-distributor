@@ -33,7 +33,7 @@ export const createAndSeedDistributor = async (
   base: Keypair,
   claimStartTs: anchor.BN,
   claimEndTs: anchor.BN,
-  stakeClaim: boolean,
+  stakeClaimOnly: boolean,
   immediateClaimPercentage: anchor.BN,
   laterClaimOffsetSeconds: anchor.BN,
   mint?: PublicKey,
@@ -67,7 +67,7 @@ export const createAndSeedDistributor = async (
     base,
     claimStartTs,
     claimEndTs,
-    stakeClaim,
+    stakeClaimOnly,
     immediateClaimPercentage,
     laterClaimOffsetSeconds,
   });

@@ -54,6 +54,19 @@ export class MerkleDistributorWrapper {
     );
   }
 
+  getEstimatedClaimAmount(amount: number, nowSeconds: number): number {
+    const percentDiff =
+      100_000000 - this.data.immediateClaimPercentage.toNumber();
+
+    const scaledPercentage =
+      this.data.immediateClaimPercentage.toNumber() +
+      (percentDiff * (nowSeconds - this.data.claimStartTs.toNumber())) /
+        this.data.laterClaimOffsetSeconds.toNumber();
+
+    const scaledAmount = amount * (scaledPercentage / 1_00000000);
+    return Math.floor(scaledAmount);
+  }
+
   static async createDistributor(
     args: CreateDistributorArgs
   ): Promise<Distributor> {
@@ -74,7 +87,7 @@ export class MerkleDistributorWrapper {
         args.maxNumNodes,
         args.claimStartTs,
         args.claimEndTs,
-        args.stakeClaim,
+        args.stakeClaimOnly,
         args.immediateClaimPercentage,
         args.laterClaimOffsetSeconds,
         {
@@ -157,7 +170,8 @@ export class MerkleDistributorWrapper {
       zetaMint: PublicKey;
     },
     bitToUse: number,
-    stakeAccName: string
+    stakeAccName: string,
+    stakeDurationEpochs: number
   ): Promise<TransactionSignature> {
     const { amount, claimant, index, proof } = args;
     const [claimStatus, _] = findClaimStatusKey(claimant, this.key);
@@ -188,6 +202,7 @@ export class MerkleDistributorWrapper {
         proof.map((p) => toBytes32Array(p)),
         bitToUse,
         stakeAccName,
+        stakeDurationEpochs,
         {
           accounts: {
             distributor: this.key,
