@@ -52,7 +52,9 @@ describe("big tree", () => {
       base,
       new anchor.BN(0),
       new anchor.BN(1809635703),
-      false
+      false,
+      new anchor.BN(100_000000),
+      new anchor.BN(0)
     );
 
     distributorWrapper = await sdk.loadDistributor(distributorKey);

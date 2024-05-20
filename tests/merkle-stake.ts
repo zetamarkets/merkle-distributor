@@ -1,47 +1,33 @@
 import * as anchor from "@coral-xyz/anchor";
-import { ZetaStaking } from "../deps/zeta-staking/target/types/zeta_staking";
-import idl from "../deps/zeta-staking/target/idl/zeta_staking.json";
 import { getAccount, getAssociatedTokenAddressSync } from "@solana/spl-token";
-import { PublicKey } from "@solana/web3.js";
-import {
-  logProtocolState,
-  testSetup,
-  objectEquals,
-} from "../deps/zeta-staking/tests/utils";
-
 import { assert } from "chai";
 
 import { BalanceTree } from "../src/utils";
 import { makeSDK, createAndSeedDistributor } from "./utils";
 
+import {
+  testSetup,
+  getAdminKeypair,
+  getZetaMintKeypair,
+} from "../deps/zeta-staking/tests/test-utils";
+import { Client } from "../deps/zeta-staking/src/client";
+import { state as State } from "../deps/zeta-staking/src/state";
+import { Network } from "../deps/zeta-staking/src/types";
+import { commitmentConfig } from "../deps/zeta-staking/src/utils";
+
 describe("merkle stake", () => {
   anchor.setProvider(anchor.AnchorProvider.env());
-
   const provider = anchor.getProvider();
-
-  const zetaStakingProgram = new anchor.Program<ZetaStaking>(
-    idl as unknown as ZetaStaking,
-    new PublicKey("8bk6VdmdDnfrq5DeZz8gBzAgffEoc7C51SqXJnxmuSFV"),
-    provider
-  );
 
   const EPOCH_DURATION_SECONDS = 5;
   const MIN_STAKE_DURATION_EPOCHS = 1;
   const LOCKUP_AMT = 100;
   const LOCKUP_EPOCHS = 5;
 
-  const mintAdminKp = anchor.web3.Keypair.generate();
-  const userKp = anchor.web3.Keypair.generate();
-  const zetaMintKp = anchor.web3.Keypair.generate();
+  const stakeOnlyUserKp = anchor.web3.Keypair.generate();
 
-  let TEST_KEYS: {
-    zetaMint: anchor.web3.PublicKey;
-    userZetaAta: anchor.web3.PublicKey;
-    protocolState: anchor.web3.PublicKey;
-    stakeAccManager: anchor.web3.PublicKey;
-    stakeAccs: anchor.web3.PublicKey[];
-    stakeVaults: anchor.web3.PublicKey[];
-    updateStakeAccCtxs: any[];
+  let STAKING_TEST_SETUP: {
+    users: Client[];
   };
 
   const merkleSdk = makeSDK();
@@ -61,17 +47,13 @@ describe("merkle stake", () => {
   ]);
 
   before(async () => {
-    TEST_KEYS = await testSetup(
+    STAKING_TEST_SETUP = await testSetup(
       provider.connection,
-      zetaStakingProgram,
       EPOCH_DURATION_SECONDS,
       LOCKUP_EPOCHS,
       MIN_STAKE_DURATION_EPOCHS,
-      mintAdminKp,
-      userKp,
-      zetaMintKp,
-      LOCKUP_AMT * 2,
-      2
+      [stakeOnlyUserKp],
+      LOCKUP_AMT * 2
     );
 
     await Promise.all(
@@ -94,41 +76,30 @@ describe("merkle stake", () => {
       new anchor.BN(0),
       new anchor.BN(1809635703),
       true,
-      TEST_KEYS.zetaMint,
-      mintAdminKp
+      new anchor.BN(100),
+      new anchor.BN(0),
+      getZetaMintKeypair().publicKey,
+      getAdminKeypair()
     );
     DISTRIBUTOR_KEY = distributorKey;
   });
 
   it("create stakeAcc0 @ epoch 1 with 100 tokens", async () => {
-    await zetaStakingProgram.methods
-      .stake(0, LOCKUP_EPOCHS, new anchor.BN(LOCKUP_AMT), "test0")
-      .accounts({
-        protocolState: TEST_KEYS.protocolState,
-        zetaTokenAccount: TEST_KEYS.userZetaAta,
-        stakeAccountManager: TEST_KEYS.stakeAccManager,
-        stakeAccount: TEST_KEYS.stakeAccs[0],
-        stakeVault: TEST_KEYS.stakeVaults[0],
-        authority: userKp.publicKey,
-        zetaMint: TEST_KEYS.zetaMint,
-      })
-      .signers([userKp])
-      .rpc();
+    await STAKING_TEST_SETUP.users[0].createAndSendTx([
+      await STAKING_TEST_SETUP.users[0].stake(
+        LOCKUP_AMT,
+        LOCKUP_EPOCHS,
+        "test0"
+      ),
+    ]);
+    await STAKING_TEST_SETUP.users[0].fetchUserState();
+    let stakeAcc = STAKING_TEST_SETUP.users[0].stakeAccounts.get(0)!;
 
-    let psAcc = await zetaStakingProgram.account.protocolState.fetch(
-      TEST_KEYS.protocolState
-    );
-    logProtocolState(psAcc);
-    let stakeAcc = await zetaStakingProgram.account.stakeAccount.fetch(
-      TEST_KEYS.stakeAccs[0]
-    );
-    assert.equal(stakeAcc.amountStillStaked.toNumber(), LOCKUP_AMT);
-    assert.equal(stakeAcc.initialStakeAmount.toNumber(), LOCKUP_AMT);
+    assert.equal(stakeAcc.amountStillStaked, LOCKUP_AMT);
+    assert.equal(stakeAcc.initialStakeAmount, LOCKUP_AMT);
     assert.equal(stakeAcc.stakeDurationEpochs, LOCKUP_EPOCHS);
-    assert.ok(objectEquals(stakeAcc.stakeState, { locked: {} }));
-
-    let ataAcc = await getAccount(provider.connection, TEST_KEYS.userZetaAta);
-    assert.equal(Number(ataAcc.amount), 100);
+    assert.equal(stakeAcc.stakeState, "Locked");
+    assert.equal(Number(STAKING_TEST_SETUP.users[0].zetaAta.amount), 100);
   });
 
   it("Try to claim, must stake claim instead", async () => {
@@ -148,46 +119,23 @@ describe("merkle stake", () => {
       assert.equal(e.msg, "Must claim tokens direct to stake");
     }
 
-    let stakeAccountManager = anchor.web3.PublicKey.findProgramAddressSync(
-      [
-        Buffer.from(anchor.utils.bytes.utf8.encode("stake-account-manager")),
-        airdropUser0.publicKey.toBuffer(),
-      ],
-      zetaStakingProgram.programId
-    )[0];
+    const airdropStakeUser0 = await Client.load(
+      Network.LOCALNET,
+      provider.connection,
+      commitmentConfig("confirmed"),
+      new anchor.Wallet(airdropUser0)
+    );
 
-    await zetaStakingProgram.methods
-      .initStakeAccountManager()
-      .accounts({
-        stakeAccountManager,
-        authority: airdropUser0.publicKey,
-      })
-      .signers([airdropUser0])
-      .rpc();
+    const airdropStakeUser1 = await Client.load(
+      Network.LOCALNET,
+      provider.connection,
+      commitmentConfig("confirmed"),
+      new anchor.Wallet(airdropUser1)
+    );
 
-    let stakeAccount = anchor.web3.PublicKey.findProgramAddressSync(
-      [
-        Buffer.from(anchor.utils.bytes.utf8.encode("stake-account")),
-        airdropUser0.publicKey.toBuffer(),
-        Uint8Array.from([0]),
-      ],
-      zetaStakingProgram.programId
-    )[0];
-    let stakeVault = anchor.web3.PublicKey.findProgramAddressSync(
-      [
-        Buffer.from(anchor.utils.bytes.utf8.encode("stake-vault")),
-        stakeAccount.toBuffer(),
-      ],
-      zetaStakingProgram.programId
-    )[0];
-    let zetaAirdropUser0Accs = {
-      zetaStaking: zetaStakingProgram.programId,
-      protocolState: TEST_KEYS.protocolState,
-      stakeAccountManager,
-      stakeAccount,
-      stakeVault,
-      zetaMint: TEST_KEYS.zetaMint,
-    };
+    await airdropStakeUser0.createAndSendTx([
+      await airdropStakeUser0.createStakeAccountManager(),
+    ]);
 
     await distributorW.claimStake(
       {
@@ -197,69 +145,34 @@ describe("merkle stake", () => {
         claimant: airdropUser0.publicKey,
         signers: [airdropUser0],
       },
-      zetaAirdropUser0Accs,
+      {
+        zetaStaking: State.program.programId,
+        protocolState: State.protocolStateAddress,
+        stakeAccountManager: airdropStakeUser0.stakeAccountManagerAddress,
+        stakeAccount: airdropStakeUser0.stakeAccountAddresses[0],
+        stakeVault: airdropStakeUser0.stakeVaultAddresses[0],
+        zetaMint: State.protocolState.zetaMint,
+      },
       0,
       "cpi_test"
     );
+    await airdropStakeUser0.fetchUserState();
 
-    let airdropU0StakeAccount =
-      await zetaStakingProgram.account.stakeAccount.fetch(
-        zetaAirdropUser0Accs.stakeAccount
-      );
-    assert.equal(
-      String.fromCharCode(...airdropU0StakeAccount.name).replace(/\0/g, ""),
-      "cpi_test"
-    );
-    assert.equal(airdropU0StakeAccount.amountStillStaked.toNumber(), 400);
-    assert.equal(
-      airdropU0StakeAccount.amountStillStaked.toNumber(),
-      airdropU0StakeAccount.initialStakeAmount.toNumber()
-    );
+    const airdropU0StakeAccount = airdropStakeUser0.stakeAccounts.get(0)!;
+    assert.equal(airdropU0StakeAccount.name, "cpi_test");
+    assert.equal(airdropU0StakeAccount.amountStillStaked, 400);
+    assert.equal(airdropU0StakeAccount.initialStakeAmount, 400);
     assert.equal(airdropU0StakeAccount.stakeDurationEpochs, LOCKUP_EPOCHS);
     assert.equal(
       airdropU0StakeAccount.authority.toString(),
-      airdropUser0.publicKey.toString()
+      airdropStakeUser0.publicKey.toString()
     );
+    assert.equal(airdropU0StakeAccount.stakeState, "Locked");
 
-    let stakeAccountManager1 = anchor.web3.PublicKey.findProgramAddressSync(
-      [
-        Buffer.from(anchor.utils.bytes.utf8.encode("stake-account-manager")),
-        airdropUser1.publicKey.toBuffer(),
-      ],
-      zetaStakingProgram.programId
-    )[0];
-    await zetaStakingProgram.methods
-      .initStakeAccountManager()
-      .accounts({
-        stakeAccountManager: stakeAccountManager1,
-        authority: airdropUser1.publicKey,
-      })
-      .signers([airdropUser1])
-      .rpc();
+    await airdropStakeUser1.createAndSendTx([
+      await airdropStakeUser1.createStakeAccountManager(),
+    ]);
 
-    let stakeAccount1 = anchor.web3.PublicKey.findProgramAddressSync(
-      [
-        Buffer.from(anchor.utils.bytes.utf8.encode("stake-account")),
-        airdropUser1.publicKey.toBuffer(),
-        Uint8Array.from([0]),
-      ],
-      zetaStakingProgram.programId
-    )[0];
-    let stakeVault1 = anchor.web3.PublicKey.findProgramAddressSync(
-      [
-        Buffer.from(anchor.utils.bytes.utf8.encode("stake-vault")),
-        stakeAccount1.toBuffer(),
-      ],
-      zetaStakingProgram.programId
-    )[0];
-    let zetaAirdropUser1Accs = {
-      zetaStaking: zetaStakingProgram.programId,
-      protocolState: TEST_KEYS.protocolState,
-      stakeAccountManager: stakeAccountManager1,
-      stakeAccount: stakeAccount1,
-      stakeVault: stakeVault1,
-      zetaMint: TEST_KEYS.zetaMint,
-    };
     const proof1 = tree.getProof(1, airdropUser1.publicKey, claimAmount1);
     await distributorW.claimStake(
       {
@@ -269,29 +182,29 @@ describe("merkle stake", () => {
         claimant: airdropUser1.publicKey,
         signers: [airdropUser1],
       },
-      zetaAirdropUser1Accs,
+      {
+        zetaStaking: State.program.programId,
+        protocolState: State.protocolStateAddress,
+        stakeAccountManager: airdropStakeUser1.stakeAccountManagerAddress,
+        stakeAccount: airdropStakeUser1.stakeAccountAddresses[0],
+        stakeVault: airdropStakeUser1.stakeVaultAddresses[0],
+        zetaMint: State.protocolState.zetaMint,
+      },
       0,
       "cpi_test1"
     );
+    await airdropStakeUser1.fetchUserState();
 
-    let airdropU1StakeAccount =
-      await zetaStakingProgram.account.stakeAccount.fetch(
-        zetaAirdropUser1Accs.stakeAccount
-      );
-    assert.equal(
-      String.fromCharCode(...airdropU1StakeAccount.name).replace(/\0/g, ""),
-      "cpi_test1"
-    );
-    assert.equal(airdropU1StakeAccount.amountStillStaked.toNumber(), 567);
-    assert.equal(
-      airdropU1StakeAccount.amountStillStaked.toNumber(),
-      airdropU1StakeAccount.initialStakeAmount.toNumber()
-    );
+    const airdropU1StakeAccount = airdropStakeUser1.stakeAccounts.get(0)!;
+    assert.equal(airdropU1StakeAccount.name, "cpi_test1");
+    assert.equal(airdropU1StakeAccount.amountStillStaked, 567);
+    assert.equal(airdropU1StakeAccount.initialStakeAmount, 567);
     assert.equal(airdropU1StakeAccount.stakeDurationEpochs, LOCKUP_EPOCHS);
     assert.equal(
       airdropU1StakeAccount.authority.toString(),
-      airdropUser1.publicKey.toString()
+      airdropStakeUser1.publicKey.toString()
     );
+    assert.equal(airdropU1StakeAccount.stakeState, "Locked");
   });
 
   it("claim back unclaimed airdrop after expiry", async () => {
