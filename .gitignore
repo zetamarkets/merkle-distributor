@@ -9,3 +9,7 @@ test-ledger
 .vscode/
 dist
 *.log
+scripts/test-airdrop-admin.json
+scripts/test-mint.json
+scripts/dummy_airdrop.csv
+scripts/trees/*kp.json
