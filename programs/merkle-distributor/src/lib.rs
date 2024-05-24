@@ -21,7 +21,7 @@ use zeta_staking::program::ZetaStaking;
 
 pub mod merkle_proof;
 
-declare_id!("5Ypn3sGFXCpQT7xptYezfF3hgXak59PQHZBoSsch4Sbb");
+declare_id!("9xXVvfr2XEikR7ZFScHtNY2Gb4s5jKTLXNTnTtux99KD");
 
 const PERCENT_100: u64 = 100_000000;
 

@@ -4,7 +4,7 @@ import { PublicKey } from "@solana/web3.js";
 import idl from "../target/idl/merkle_distributor.json";
 
 export const PROGRAM_ID = new PublicKey(
-  "5Ypn3sGFXCpQT7xptYezfF3hgXak59PQHZBoSsch4Sbb"
+  "9xXVvfr2XEikR7ZFScHtNY2Gb4s5jKTLXNTnTtux99KD"
 );
 
 export const MERKLE_DISTRIBUTOR_PROGRAM_ID = PROGRAM_ID;
