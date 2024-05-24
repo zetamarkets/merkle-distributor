@@ -677,13 +677,15 @@ pub fn get_time_scaled_percentage(
     total_offset_time: u64,
 ) -> u64 {
     let percentage_diff = PERCENT_100.checked_sub(base_percentage).unwrap();
-    let a = percentage_diff.checked_mul(elapsed_time).unwrap();
-
-    let scaled_percentage = base_percentage
-        .checked_add(a.checked_div(total_offset_time).unwrap())
+    let a = (percentage_diff as u128)
+        .checked_mul(elapsed_time as u128)
         .unwrap();
 
-    scaled_percentage
+    let scaled_percentage = (base_percentage as u128)
+        .checked_add((a as u128).checked_div(total_offset_time as u128).unwrap())
+        .unwrap();
+
+    scaled_percentage.try_into().unwrap()
 }
 
 /// Error codes.
