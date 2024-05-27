@@ -158,8 +158,7 @@ export class MerkleDistributorWrapper {
     );
   }
 
-  // TODO: Fix later
-  async claimStake(
+  claimStakeIx(
     args: ClaimArgs,
     cpiAccs: {
       zetaStaking: PublicKey;
@@ -172,10 +171,53 @@ export class MerkleDistributorWrapper {
     bitToUse: number,
     stakeAccName: string,
     stakeDurationEpochs: number
-  ): Promise<TransactionSignature> {
+  ): TransactionInstruction {
     const { amount, claimant, index, proof } = args;
     const [claimStatus, _] = findClaimStatusKey(claimant, this.key);
 
+    return this.program.instruction.claimStake(
+      index,
+      amount,
+      proof.map((p) => toBytes32Array(p)),
+      bitToUse,
+      stakeAccName,
+      stakeDurationEpochs,
+      {
+        accounts: {
+          distributor: this.key,
+          claimStatus,
+          from: this.distributorATA,
+          to: spl.getAssociatedTokenAddressSync(this.data.mint, args.claimant),
+          zetaStaking: cpiAccs.zetaStaking,
+          cpiProtocolState: cpiAccs.protocolState,
+          cpiStakeAccountManager: cpiAccs.stakeAccountManager,
+          cpiStakeAccount: cpiAccs.stakeAccount,
+          cpiStakeVault: cpiAccs.stakeVault,
+          zetaMint: cpiAccs.zetaMint,
+          claimant,
+          payer: claimant,
+          systemProgram: SystemProgram.programId,
+          tokenProgram: spl.TOKEN_PROGRAM_ID,
+        },
+      }
+    );
+  }
+
+  async claimStake(
+    args: ClaimArgs,
+    cpiAccs: {
+      zetaStaking: PublicKey;
+      protocolState: PublicKey;
+      stakeAccountManager: PublicKey;
+      stakeAccount: PublicKey;
+      stakeVault: PublicKey;
+      zetaMint: PublicKey;
+    },
+    bitToUse: number,
+    stakeAccName: string,
+    stakeDurationEpochs: number,
+    returnTx: boolean = false
+  ): Promise<TransactionSignature | Transaction> {
     const tx = new Transaction();
 
     let address = spl.getAssociatedTokenAddressSync(
@@ -196,38 +238,26 @@ export class MerkleDistributorWrapper {
     }
 
     tx.add(
-      this.program.instruction.claimStake(
-        index,
-        amount,
-        proof.map((p) => toBytes32Array(p)),
+      this.claimStakeIx(
+        args,
+        cpiAccs,
         bitToUse,
         stakeAccName,
-        stakeDurationEpochs,
-        {
-          accounts: {
-            distributor: this.key,
-            claimStatus,
-            from: this.distributorATA,
-            to: address,
-            zetaStaking: cpiAccs.zetaStaking,
-            cpiProtocolState: cpiAccs.protocolState,
-            cpiStakeAccountManager: cpiAccs.stakeAccountManager,
-            cpiStakeAccount: cpiAccs.stakeAccount,
-            cpiStakeVault: cpiAccs.stakeVault,
-            zetaMint: cpiAccs.zetaMint,
-            claimant,
-            payer: claimant,
-            systemProgram: SystemProgram.programId,
-            tokenProgram: spl.TOKEN_PROGRAM_ID,
-          },
-        }
+        stakeDurationEpochs
       )
     );
 
-    return processTransaction(this.sdk.provider, tx, args.signers);
+    if (returnTx) {
+      return tx;
+    } else {
+      return processTransaction(this.sdk.provider, tx, args.signers);
+    }
   }
 
-  async claim(args: ClaimArgs): Promise<TransactionSignature> {
+  async claim(
+    args: ClaimArgs,
+    returnTx: boolean = false
+  ): Promise<TransactionSignature | Transaction> {
     const { provider } = this.sdk;
 
     const tx = new Transaction().add(this.claimIX(args));
@@ -252,7 +282,11 @@ export class MerkleDistributorWrapper {
       tx.instructions.unshift(instruction);
     }
 
-    return processTransaction(provider, tx, args.signers);
+    if (returnTx) {
+      return tx;
+    } else {
+      return processTransaction(provider, tx, args.signers);
+    }
   }
 
   async getClaimStatus(claimant: PublicKey): Promise<ClaimStatus> {
