@@ -1,13 +1,14 @@
 {
   "name": "@zetamarkets/zeta-merkle-distributor",
-  "version": "0.1.1",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "version": "0.1.4",
+  "main": "dist/src/index.js",
+  "types": "dist/src/index.d.ts",
   "author": "@zetamarkets",
   "license": "Apache-2.0",
   "scripts": {
     "lint:fix": "prettier */*.js \"*/**/*{.js,.ts}\" -w",
-    "lint": "prettier */*.js \"*/**/*{.js,.ts}\" --check"
+    "lint": "prettier */*.js \"*/**/*{.js,.ts}\" --check",
+    "build-sdk": "npx tsc"
   },
   "dependencies": {
     "@coral-xyz/anchor": "^0.29.0",
