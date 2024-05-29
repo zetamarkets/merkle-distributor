@@ -13,7 +13,7 @@ export type CreateDistributorArgs = {
   base: Keypair;
   claimStartTs: anchor.BN;
   claimEndTs: anchor.BN;
-  stakeClaim: boolean;
+  stakeClaimOnly: boolean;
   immediateClaimPercentage: anchor.BN;
   laterClaimOffsetSeconds: anchor.BN;
 };
@@ -28,6 +28,12 @@ export type UpdateDistributorArgs = {
 export type UpdateDistributorClaimWindowArgs = {
   claimStartTs: anchor.BN;
   claimEndTs: anchor.BN;
+  adminAuth: Keypair;
+};
+
+export type UpdateDistributorClaimPercentageArgs = {
+  immediateClaimPercentage: anchor.BN;
+  laterClaimOffsetSeconds: anchor.BN;
   adminAuth: Keypair;
 };
 
@@ -58,7 +64,7 @@ export interface DistributorData {
   numNodesClaimed: anchor.BN;
   claimStartTs: anchor.BN;
   claimEndTs: anchor.BN;
-  stakeClaim: boolean;
+  stakeClaimOnly: boolean;
   immediateClaimPercentage: anchor.BN;
   laterClaimOffsetSeconds: anchor.BN;
 }

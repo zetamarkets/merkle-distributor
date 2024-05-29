@@ -20,6 +20,7 @@ import type {
   ClaimStatus,
   UpdateDistributorArgs,
   UpdateDistributorClaimWindowArgs,
+  UpdateDistributorClaimPercentageArgs,
 } from "./types";
 import { toBytes32Array, processTransaction } from "./utils";
 
@@ -54,6 +55,20 @@ export class MerkleDistributorWrapper {
     );
   }
 
+  getEstimatedClaimAmount(amount: number, nowSeconds: number): number {
+    const percentDiff =
+      100_000000 - this.data.immediateClaimPercentage.toNumber();
+
+    const scaledPercentage =
+      this.data.immediateClaimPercentage.toNumber() +
+      (percentDiff * (nowSeconds - this.data.claimStartTs.toNumber())) /
+        this.data.laterClaimOffsetSeconds.toNumber();
+
+    let checkedPercentage = Math.min(scaledPercentage, 100_000000);
+    const scaledAmount = amount * (checkedPercentage / 100_000000);
+    return Math.floor(scaledAmount);
+  }
+
   static async createDistributor(
     args: CreateDistributorArgs
   ): Promise<Distributor> {
@@ -74,7 +89,7 @@ export class MerkleDistributorWrapper {
         args.maxNumNodes,
         args.claimStartTs,
         args.claimEndTs,
-        args.stakeClaim,
+        args.stakeClaimOnly,
         args.immediateClaimPercentage,
         args.laterClaimOffsetSeconds,
         {
@@ -145,7 +160,51 @@ export class MerkleDistributorWrapper {
     );
   }
 
-  // TODO: Fix later
+  claimStakeIx(
+    args: ClaimArgs,
+    cpiAccs: {
+      zetaStaking: PublicKey;
+      protocolState: PublicKey;
+      stakeAccountManager: PublicKey;
+      stakeAccount: PublicKey;
+      stakeVault: PublicKey;
+      zetaMint: PublicKey;
+    },
+    bitToUse: number,
+    stakeAccName: string,
+    stakeDurationEpochs: number
+  ): TransactionInstruction {
+    const { amount, claimant, index, proof } = args;
+    const [claimStatus, _] = findClaimStatusKey(claimant, this.key);
+
+    return this.program.instruction.claimStake(
+      index,
+      amount,
+      proof.map((p) => toBytes32Array(p)),
+      bitToUse,
+      stakeAccName,
+      stakeDurationEpochs,
+      {
+        accounts: {
+          distributor: this.key,
+          claimStatus,
+          from: this.distributorATA,
+          to: spl.getAssociatedTokenAddressSync(this.data.mint, args.claimant),
+          zetaStaking: cpiAccs.zetaStaking,
+          cpiProtocolState: cpiAccs.protocolState,
+          cpiStakeAccountManager: cpiAccs.stakeAccountManager,
+          cpiStakeAccount: cpiAccs.stakeAccount,
+          cpiStakeVault: cpiAccs.stakeVault,
+          zetaMint: cpiAccs.zetaMint,
+          claimant,
+          payer: claimant,
+          systemProgram: SystemProgram.programId,
+          tokenProgram: spl.TOKEN_PROGRAM_ID,
+        },
+      }
+    );
+  }
+
   async claimStake(
     args: ClaimArgs,
     cpiAccs: {
@@ -157,11 +216,10 @@ export class MerkleDistributorWrapper {
       zetaMint: PublicKey;
     },
     bitToUse: number,
-    stakeAccName: string
-  ): Promise<TransactionSignature> {
-    const { amount, claimant, index, proof } = args;
-    const [claimStatus, _] = findClaimStatusKey(claimant, this.key);
-
+    stakeAccName: string,
+    stakeDurationEpochs: number,
+    returnTx: boolean = false
+  ): Promise<TransactionSignature | Transaction> {
     const tx = new Transaction();
 
     let address = spl.getAssociatedTokenAddressSync(
@@ -182,37 +240,26 @@ export class MerkleDistributorWrapper {
     }
 
     tx.add(
-      this.program.instruction.claimStake(
-        index,
-        amount,
-        proof.map((p) => toBytes32Array(p)),
+      this.claimStakeIx(
+        args,
+        cpiAccs,
         bitToUse,
         stakeAccName,
-        {
-          accounts: {
-            distributor: this.key,
-            claimStatus,
-            from: this.distributorATA,
-            to: address,
-            zetaStaking: cpiAccs.zetaStaking,
-            cpiProtocolState: cpiAccs.protocolState,
-            cpiStakeAccountManager: cpiAccs.stakeAccountManager,
-            cpiStakeAccount: cpiAccs.stakeAccount,
-            cpiStakeVault: cpiAccs.stakeVault,
-            zetaMint: cpiAccs.zetaMint,
-            claimant,
-            payer: claimant,
-            systemProgram: SystemProgram.programId,
-            tokenProgram: spl.TOKEN_PROGRAM_ID,
-          },
-        }
+        stakeDurationEpochs
       )
     );
 
-    return processTransaction(this.sdk.provider, tx, args.signers);
+    if (returnTx) {
+      return tx;
+    } else {
+      return processTransaction(this.sdk.provider, tx, args.signers);
+    }
   }
 
-  async claim(args: ClaimArgs): Promise<TransactionSignature> {
+  async claim(
+    args: ClaimArgs,
+    returnTx: boolean = false
+  ): Promise<TransactionSignature | Transaction> {
     const { provider } = this.sdk;
 
     const tx = new Transaction().add(this.claimIX(args));
@@ -237,7 +284,11 @@ export class MerkleDistributorWrapper {
       tx.instructions.unshift(instruction);
     }
 
-    return processTransaction(provider, tx, args.signers);
+    if (returnTx) {
+      return tx;
+    } else {
+      return processTransaction(provider, tx, args.signers);
+    }
   }
 
   async getClaimStatus(claimant: PublicKey): Promise<ClaimStatus> {
@@ -282,6 +333,31 @@ export class MerkleDistributorWrapper {
       this.sdk.program.instruction.updateDistributorClaimWindow(
         args.claimStartTs,
         args.claimEndTs,
+        {
+          accounts: {
+            adminAuth: args.adminAuth.publicKey,
+            distributor: this.key,
+          },
+        }
+      )
+    );
+
+    return processTransaction(
+      this.sdk.provider,
+      new Transaction().add(...ixs),
+      [args.adminAuth]
+    );
+  }
+
+  async updateDistributorClaimPercentage(
+    args: UpdateDistributorClaimPercentageArgs
+  ): Promise<TransactionSignature> {
+    const ixs: TransactionInstruction[] = [];
+
+    ixs.push(
+      this.sdk.program.instruction.updateDistributorClaimPercentages(
+        args.immediateClaimPercentage,
+        args.laterClaimOffsetSeconds,
         {
           accounts: {
             adminAuth: args.adminAuth.publicKey,

@@ -20,7 +20,7 @@ describe("merkle stake", () => {
   const provider = anchor.getProvider();
 
   const EPOCH_DURATION_SECONDS = 5;
-  const MIN_STAKE_DURATION_EPOCHS = 1;
+  const MIN_STAKE_DURATION_EPOCHS = 2;
   const LOCKUP_AMT = 100;
   const LOCKUP_EPOCHS = 5;
 
@@ -137,6 +137,32 @@ describe("merkle stake", () => {
       await airdropStakeUser0.createStakeAccountManager(),
     ]);
 
+    try {
+      await distributorW.claimStake(
+        {
+          index: new anchor.BN(0),
+          amount: claimAmount0,
+          proof,
+          claimant: airdropUser0.publicKey,
+          signers: [airdropUser0],
+        },
+        {
+          zetaStaking: State.program.programId,
+          protocolState: State.protocolStateAddress,
+          stakeAccountManager: airdropStakeUser0.stakeAccountManagerAddress,
+          stakeAccount: airdropStakeUser0.stakeAccountAddresses[0],
+          stakeVault: airdropStakeUser0.stakeVaultAddresses[0],
+          zetaMint: State.protocolState.zetaMint,
+        },
+        0,
+        "cpi_test",
+        1
+      );
+      throw Error("Should not succeed");
+    } catch (e) {
+      assert.equal(e.msg, "Invalid stake duration");
+    }
+
     await distributorW.claimStake(
       {
         index: new anchor.BN(0),
@@ -154,7 +180,8 @@ describe("merkle stake", () => {
         zetaMint: State.protocolState.zetaMint,
       },
       0,
-      "cpi_test"
+      "cpi_test",
+      LOCKUP_EPOCHS
     );
     await airdropStakeUser0.fetchUserState();
 
@@ -191,7 +218,8 @@ describe("merkle stake", () => {
         zetaMint: State.protocolState.zetaMint,
       },
       0,
-      "cpi_test1"
+      "cpi_test1",
+      LOCKUP_EPOCHS
     );
     await airdropStakeUser1.fetchUserState();
 

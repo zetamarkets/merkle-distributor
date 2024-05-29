@@ -5,7 +5,7 @@ seeds = false
 skip-lint = false
 
 [programs.localnet]
-merkle_distributor = "5Ypn3sGFXCpQT7xptYezfF3hgXak59PQHZBoSsch4Sbb"
+merkle_distributor = "9xXVvfr2XEikR7ZFScHtNY2Gb4s5jKTLXNTnTtux99KD"
 
 [[test.genesis]]
 address = "GowK1APjsjupJpaTQPgeuko7VyzLKKW8i3KQ7Lp11jek"

@@ -21,7 +21,9 @@ use zeta_staking::program::ZetaStaking;
 
 pub mod merkle_proof;
 
-declare_id!("5Ypn3sGFXCpQT7xptYezfF3hgXak59PQHZBoSsch4Sbb");
+declare_id!("9xXVvfr2XEikR7ZFScHtNY2Gb4s5jKTLXNTnTtux99KD");
+
+const PERCENT_100: u64 = 100_000000;
 
 /// The [merkle_distributor] program.
 #[program]
@@ -38,7 +40,7 @@ pub mod merkle_distributor {
         max_num_nodes: u64,
         claim_start_ts: u64,
         claim_end_ts: u64,
-        stake_claim: bool,
+        stake_claim_only: bool,
         immediate_claim_percentage: u64,
         later_claim_offset_seconds: u64,
     ) -> Result<()> {
@@ -60,9 +62,10 @@ pub mod merkle_distributor {
         assert!(claim_end_ts > claim_start_ts);
         distributor.claim_start_ts = claim_start_ts;
         distributor.claim_end_ts = claim_end_ts;
-        distributor.stake_claim = stake_claim;
+        distributor.stake_claim_only = stake_claim_only;
 
         assert!(later_claim_offset_seconds + claim_start_ts < claim_end_ts);
+        assert!(immediate_claim_percentage <= PERCENT_100);
         distributor.immediate_claim_percentage = immediate_claim_percentage;
         distributor.later_claim_offset_seconds = later_claim_offset_seconds;
 
@@ -117,7 +120,7 @@ pub mod merkle_distributor {
     pub fn claim(ctx: Context<Claim>, index: u64, amount: u64, proof: Vec<[u8; 32]>) -> Result<()> {
         let distributor = &ctx.accounts.distributor;
         require!(
-            distributor.stake_claim == false,
+            distributor.stake_claim_only == false,
             ErrorCode::MustClaimDirectToStake
         );
         let now = Clock::get()?.unix_timestamp as u64;
@@ -173,11 +176,17 @@ pub mod merkle_distributor {
             ErrorCode::InvalidDistributorTokenAccount
         );
 
-        let transfer_amount = if now < distributor.claim_start_ts + distributor.later_claim_offset_seconds {
-          get_percentage(claim_amount, distributor.immediate_claim_percentage)
-        } else {
-          claim_amount
-        };
+        let transfer_amount =
+            if now < distributor.claim_start_ts + distributor.later_claim_offset_seconds {
+                let percent_to_get = get_time_scaled_percentage(
+                    distributor.immediate_claim_percentage,
+                    now.checked_sub(distributor.claim_start_ts).unwrap(),
+                    distributor.later_claim_offset_seconds,
+                );
+                get_percentage(claim_amount, percent_to_get)
+            } else {
+                claim_amount
+            };
 
         token::transfer(
             CpiContext::new(
@@ -227,12 +236,9 @@ pub mod merkle_distributor {
         proof: Vec<[u8; 32]>,
         zeta_stake_bit_to_use: u8,
         stake_acc_name: String,
+        stake_duration_epochs: u32,
     ) -> Result<()> {
         let distributor = &ctx.accounts.distributor;
-        require!(
-            distributor.stake_claim == true,
-            ErrorCode::MustClaimDirectToWallet
-        );
         let now = Clock::get()?.unix_timestamp as u64;
         require!(
             now >= distributor.claim_start_ts && now <= distributor.claim_end_ts,
@@ -299,6 +305,13 @@ pub mod merkle_distributor {
             claim_amount,
         )?;
 
+        require!(
+            stake_duration_epochs <= ctx.accounts.cpi_protocol_state.max_n_epochs
+                && stake_duration_epochs
+                    >= ctx.accounts.cpi_protocol_state.min_stake_duration_epochs,
+            ErrorCode::InvalidStakeDuration
+        );
+
         let cpi_accs = zeta_staking::cpi::accounts::Stake {
             protocol_state: ctx.accounts.cpi_protocol_state.to_account_info(),
             zeta_token_account: ctx.accounts.to.to_account_info(),
@@ -314,7 +327,7 @@ pub mod merkle_distributor {
         zeta_staking::cpi::stake(
             cpi_ctx,
             zeta_stake_bit_to_use,
-            ctx.accounts.cpi_protocol_state.max_n_epochs,
+            stake_duration_epochs,
             claim_amount,
             stake_acc_name,
         )?;
@@ -348,7 +361,10 @@ pub mod merkle_distributor {
     pub fn admin_claim_after_expiry(ctx: Context<AdminClaimAfterExpiry>) -> Result<()> {
         let distributor = &mut ctx.accounts.distributor;
         let now = Clock::get()?.unix_timestamp;
-        require!(now as u64 > distributor.claim_end_ts, ErrorCode::InsideClaimWindow);
+        require!(
+            now as u64 > distributor.claim_end_ts,
+            ErrorCode::InsideClaimWindow
+        );
 
         let seeds = [
             b"MerkleDistributor".as_ref(),
@@ -551,7 +567,7 @@ pub struct AdminClaimAfterExpiry<'info> {
 
     /// Who is claiming the tokens and the payer.
     #[account(
-        mut, 
+        mut,
         address = to.owner @ ErrorCode::OwnerMismatch
     )]
     pub admin_auth: Signer<'info>,
@@ -599,10 +615,10 @@ pub struct MerkleDistributor {
     /// Timestamp you can no longer claim at // 8
     pub claim_end_ts: u64,
     /// Whether this merkle tree will be directly staked // 1
-    pub stake_claim: bool,
+    pub stake_claim_only: bool,
     /// Percentage of allocated tokens you get if you claim immediately, 6dp percentage e.g 60_000000 = 60%
     pub immediate_claim_percentage: u64,
-    /// the offset from claim_start_ts in seconds when the later_claim_percentage number kicks in.
+    /// the offset from claim_start_ts in seconds when there is no more discount on claim
     pub later_claim_offset_seconds: u64,
 }
 
@@ -645,10 +661,31 @@ pub fn get_percentage(amount: u64, percentage: u64) -> u64 {
     (amount as u128)
         .checked_mul(percentage as u128)
         .unwrap()
-        .checked_div(100 * 1_000_000)
+        .checked_div(PERCENT_100 as u128)
         .unwrap()
         .try_into()
         .unwrap()
+}
+
+// Base percentage is the immediate claim_percentage, so the scale is from base_percentage - 100%
+// e.g if total_offset_time is 1000 seconds, and elapsed time has been 600 seconds,
+// base percetnage is 60% = 60_000000
+// the scaled percetange should be 60_000000 + (100_000000 - 60_000000) * elapsed_time / total_offset_time
+pub fn get_time_scaled_percentage(
+    base_percentage: u64,
+    elapsed_time: u64,
+    total_offset_time: u64,
+) -> u64 {
+    let percentage_diff = PERCENT_100.checked_sub(base_percentage).unwrap();
+    let a = (percentage_diff as u128)
+        .checked_mul(elapsed_time as u128)
+        .unwrap();
+
+    let scaled_percentage = (base_percentage as u128)
+        .checked_add((a as u128).checked_div(total_offset_time as u128).unwrap())
+        .unwrap();
+
+    scaled_percentage.try_into().unwrap()
 }
 
 /// Error codes.
@@ -678,8 +715,8 @@ pub enum ErrorCode {
     OutsideClaimWindow,
     #[msg("Must claim tokens direct to stake")]
     MustClaimDirectToStake,
-    #[msg("Must claim tokens direct to wallet")]
-    MustClaimDirectToWallet,
     #[msg("Can only admin claim after the claim window is over")]
     InsideClaimWindow,
+    #[msg("Invalid stake duration")]
+    InvalidStakeDuration,
 }
