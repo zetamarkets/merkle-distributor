@@ -25,9 +25,9 @@ const CX = new Connection(
   "confirmed"
 );
 
-const CLAIM_START_TS = new anchor.BN(1716595200); // May 25 00:00
-const FULL_CLAIM_FROM = new anchor.BN(1716854400); // May 28 00:00
-const CLAIM_END_TS = new anchor.BN(1716940800); // May 29 00:00
+const CLAIM_START_TS = new anchor.BN(1716681600); // May 26 00:00
+const FULL_CLAIM_FROM = new anchor.BN(1717286400); // June 2 00:00
+const CLAIM_END_TS = new anchor.BN(1717545600); // June 5 00:00
 const immediateClaimPercentage = 50; // Linearly scale up from 50%
 
 async function main() {

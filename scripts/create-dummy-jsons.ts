@@ -31,9 +31,11 @@ async function main() {
         console.error(error);
       }
 
+      console.log(result);
+
       result.forEach((r) => {
         let firstChar = r.Address[0].toLowerCase();
-        console.log(firstChar);
+        // console.log(firstChar);
         if (r.BaseAllocation != 0) {
           if (shardedBaseJsons.has(firstChar)) {
             shardedBaseJsons.get(firstChar)!.push({
