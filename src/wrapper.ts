@@ -20,6 +20,7 @@ import type {
   ClaimStatus,
   UpdateDistributorArgs,
   UpdateDistributorClaimWindowArgs,
+  UpdateDistributorClaimPercentageArgs,
 } from "./types";
 import { toBytes32Array, processTransaction } from "./utils";
 
@@ -63,7 +64,8 @@ export class MerkleDistributorWrapper {
       (percentDiff * (nowSeconds - this.data.claimStartTs.toNumber())) /
         this.data.laterClaimOffsetSeconds.toNumber();
 
-    const scaledAmount = amount * (scaledPercentage / 1_00000000);
+    let checkedPercentage = Math.min(scaledPercentage, 100_000000);
+    const scaledAmount = amount * (checkedPercentage / 100_000000);
     return Math.floor(scaledAmount);
   }
 
@@ -331,6 +333,31 @@ export class MerkleDistributorWrapper {
       this.sdk.program.instruction.updateDistributorClaimWindow(
         args.claimStartTs,
         args.claimEndTs,
+        {
+          accounts: {
+            adminAuth: args.adminAuth.publicKey,
+            distributor: this.key,
+          },
+        }
+      )
+    );
+
+    return processTransaction(
+      this.sdk.provider,
+      new Transaction().add(...ixs),
+      [args.adminAuth]
+    );
+  }
+
+  async updateDistributorClaimPercentage(
+    args: UpdateDistributorClaimPercentageArgs
+  ): Promise<TransactionSignature> {
+    const ixs: TransactionInstruction[] = [];
+
+    ixs.push(
+      this.sdk.program.instruction.updateDistributorClaimPercentages(
+        args.immediateClaimPercentage,
+        args.laterClaimOffsetSeconds,
         {
           accounts: {
             adminAuth: args.adminAuth.publicKey,

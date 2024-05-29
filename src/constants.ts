@@ -13,7 +13,7 @@ export const MERKLE_DISTRIBUTOR_CODER = new anchor.BorshCoder(
   idl as anchor.Idl
 );
 
-export const TEST_BASE_DISTRIBUTOR_KEYS = {
+export const TEST_BASE_DISTRIBUTOR_KEYS: Record<string, string> = {
   "2": "Fd8nH3LY1Sr37Aa5gDHRPu179mJXPLchVGqppv9TdMAg",
   "3": "5V3xcxgDeJXgbUv2c5WsopCbrkTQDoNonYZc8Uw3JG9T",
   "4": "GhQvtYvjrVsCeXxJZKUh8JmyfYtRXVeJeF4cMKnSyUBy",
@@ -31,7 +31,7 @@ export const TEST_BASE_DISTRIBUTOR_KEYS = {
   h: "5jwzKsLcvFzCucUGiCUNX4uAHDaLeGhTP9xNqr9PzAtL",
 };
 
-export const TEST_COMMUNITY_DISTRIBUTOR_KEYS = {
+export const TEST_COMMUNITY_DISTRIBUTOR_KEYS: Record<string, string> = {
   "2": "DwGc9MBM6rrBADL7BEtUiDmhymqxZA7B3DTFkQnEYaBs",
   "3": "FLYcmfxVCfYbKPmFv92NPw9zzNvPZdVCQ1boZps5Bpvm",
   "4": "CeLdk7TLdvoiHqHeGiURqjWEc9GceqFzxLUzNpPvV5SA",

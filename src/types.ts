@@ -31,6 +31,12 @@ export type UpdateDistributorClaimWindowArgs = {
   adminAuth: Keypair;
 };
 
+export type UpdateDistributorClaimPercentageArgs = {
+  immediateClaimPercentage: anchor.BN;
+  laterClaimOffsetSeconds: anchor.BN;
+  adminAuth: Keypair;
+};
+
 export type Distributor = {
   bump: number;
   base: PublicKey;

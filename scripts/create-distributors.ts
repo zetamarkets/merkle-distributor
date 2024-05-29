@@ -6,10 +6,17 @@ import * as path from "path";
 import adminPrivateKey from "./test-airdrop-admin.json";
 import mintPrivateKey from "./test-mint.json";
 
-import { MerkleDistributorSDK, findDistributorKey } from "../src";
-import { Distributor } from "../src";
+import {
+  MerkleDistributorSDK,
+  MerkleDistributorWrapper,
+  findDistributorKey,
+} from "../src";
 import { BalanceTree } from "../src/utils";
-import { getAssociatedTokenAddressSync, transfer } from "@solana/spl-token";
+import {
+  getAccount,
+  getAssociatedTokenAddressSync,
+  transfer,
+} from "@solana/spl-token";
 
 const ADMIN_KP = Keypair.fromSecretKey(Buffer.from(adminPrivateKey));
 const MINT_KP = Keypair.fromSecretKey(Buffer.from(mintPrivateKey));
@@ -82,108 +89,141 @@ async function main() {
   });
 
   let baseDistributorKeys = new Map();
-
   for (let [shardChar, preTreeArr] of baseTrees.entries()) {
-    const tree = new BalanceTree(preTreeArr);
+    const baseKp = baseBaseKps.get(shardChar)!;
+    const distrbutorKey = findDistributorKey(baseKp.publicKey);
 
+    const tree = new BalanceTree(preTreeArr);
     let maxTotalClaim = new anchor.BN(0);
     preTreeArr.forEach((x) => {
       maxTotalClaim = maxTotalClaim.add(x.amount);
     });
     let maxNumNodes = new anchor.BN(preTreeArr.length);
 
-    const baseKp = baseBaseKps.get(shardChar)!;
+    let distributorW: MerkleDistributorWrapper;
 
-    const distrbutorKey = findDistributorKey(baseKp.publicKey);
+    try {
+      distributorW = await merkleSdk.loadDistributor(distrbutorKey[0]);
+    } catch (e) {
+      console.log(
+        `base tree for ${shardChar} has not been created yet, creating...`
+      );
 
-    // try {
-    //   console.log("creating for", shardChar);
-    //   const distributorCreated = await merkleSdk.createDistributor({
-    //     root: tree.getRoot(),
-    //     maxTotalClaim,
-    //     maxNumNodes,
-    //     tokenMint: MINT_KP.publicKey,
-    //     adminAuth: ADMIN_KP,
-    //     base: baseKp,
-    //     claimStartTs: CLAIM_START_TS,
-    //     claimEndTs: CLAIM_END_TS,
-    //     stakeClaimOnly: false,
-    //     immediateClaimPercentage: new anchor.BN(
-    //       immediateClaimPercentage * 1_000000
-    //     ),
-    //     laterClaimOffsetSeconds: FULL_CLAIM_FROM.sub(CLAIM_START_TS),
-    //   });
+      await merkleSdk.createDistributor({
+        root: tree.getRoot(),
+        maxTotalClaim,
+        maxNumNodes,
+        tokenMint: MINT_KP.publicKey,
+        adminAuth: ADMIN_KP,
+        base: baseKp,
+        claimStartTs: CLAIM_START_TS,
+        claimEndTs: CLAIM_END_TS,
+        stakeClaimOnly: false,
+        immediateClaimPercentage: new anchor.BN(
+          immediateClaimPercentage * 1_000000
+        ),
+        laterClaimOffsetSeconds: FULL_CLAIM_FROM.sub(CLAIM_START_TS),
+      });
 
-    //   console.log("created for", shardChar);
+      console.log(`created for ${shardChar}`);
 
-    //   await transfer(
-    //     CX,
-    //     ADMIN_KP,
-    //     getAssociatedTokenAddressSync(MINT_KP.publicKey, ADMIN_KP.publicKey),
-    //     distributorCreated.distributorATA,
-    //     ADMIN_KP,
-    //     maxTotalClaim.toNumber()
-    //   );
+      distributorW = await merkleSdk.loadDistributor(distrbutorKey[0]);
+    }
 
-    //   console.log("transfered for", shardChar);
-    // } catch (e) {
-    //   console.log("distributor already created");
-    // }
-
-    const distributorW = await merkleSdk.loadDistributor(distrbutorKey[0]);
+    try {
+      distributorW = await merkleSdk.loadDistributor(distrbutorKey[0]);
+      const ataInfo = await getAccount(CX, distributorW.distributorATA);
+      if (Number(ataInfo.amount) != maxTotalClaim.toNumber()) {
+        let transferAmt = maxTotalClaim.toNumber() - Number(ataInfo.amount);
+        console.log(
+          `transferring ${transferAmt} tokens to distributor ata: ${distributorW.distributorATA} for ${shardChar}`
+        );
+        await transfer(
+          CX,
+          ADMIN_KP,
+          getAssociatedTokenAddressSync(MINT_KP.publicKey, ADMIN_KP.publicKey),
+          distributorW.distributorATA,
+          ADMIN_KP,
+          transferAmt
+        );
+        console.log(`transferred ${transferAmt} for ${shardChar}`);
+      } else {
+        console.log(`distributor ${shardChar} ata has enough tokens already:`);
+      }
+    } catch (e) {
+      console.log(`failed to transfer for ${shardChar}, ${e}`);
+    }
 
     baseDistributorKeys.set(shardChar, distributorW.key.toString());
   }
 
   console.log("Doing community trees now");
+
   let communityDistributorKeys = new Map();
-
   for (let [shardChar, preTreeArr] of communityTrees.entries()) {
-    const tree = new BalanceTree(preTreeArr);
+    const baseKp = communityBaseKps.get(shardChar)!;
+    const distrbutorKey = findDistributorKey(baseKp.publicKey);
 
+    const tree = new BalanceTree(preTreeArr);
     let maxTotalClaim = new anchor.BN(0);
     preTreeArr.forEach((x) => {
       maxTotalClaim = maxTotalClaim.add(x.amount);
     });
     let maxNumNodes = new anchor.BN(preTreeArr.length);
 
-    const baseKp = communityBaseKps.get(shardChar)!;
+    let distributorW: MerkleDistributorWrapper;
 
-    const distrbutorKey = findDistributorKey(baseKp.publicKey);
+    try {
+      distributorW = await merkleSdk.loadDistributor(distrbutorKey[0]);
+    } catch (e) {
+      console.log(
+        `community tree for ${shardChar} has not been created yet, creating...`
+      );
 
-    // try {
-    //   console.log("creating for", shardChar);
-    //   const distributorCreated = await merkleSdk.createDistributor({
-    //     root: tree.getRoot(),
-    //     maxTotalClaim,
-    //     maxNumNodes,
-    //     tokenMint: MINT_KP.publicKey,
-    //     adminAuth: ADMIN_KP,
-    //     base: baseKp,
-    //     claimStartTs: CLAIM_START_TS,
-    //     claimEndTs: CLAIM_END_TS,
-    //     stakeClaimOnly: false,
-    //     immediateClaimPercentage: new anchor.BN(100 * 1_000000),
-    //     laterClaimOffsetSeconds: new anchor.BN(0),
-    //   });
+      await merkleSdk.createDistributor({
+        root: tree.getRoot(),
+        maxTotalClaim,
+        maxNumNodes,
+        tokenMint: MINT_KP.publicKey,
+        adminAuth: ADMIN_KP,
+        base: baseKp,
+        claimStartTs: CLAIM_START_TS,
+        claimEndTs: CLAIM_END_TS,
+        stakeClaimOnly: false,
+        immediateClaimPercentage: new anchor.BN(
+          immediateClaimPercentage * 1_000000
+        ),
+        laterClaimOffsetSeconds: FULL_CLAIM_FROM.sub(CLAIM_START_TS),
+      });
 
-    //   console.log("created for", shardChar);
+      console.log(`created for ${shardChar}`);
 
-    //   await transfer(
-    //     CX,
-    //     ADMIN_KP,
-    //     getAssociatedTokenAddressSync(MINT_KP.publicKey, ADMIN_KP.publicKey),
-    //     distributorCreated.distributorATA,
-    //     ADMIN_KP,
-    //     maxTotalClaim.toNumber()
-    //   );
+      distributorW = await merkleSdk.loadDistributor(distrbutorKey[0]);
+    }
 
-    //   console.log("transfered for", shardChar);
-    // } catch (e) {
-    //   console.log("distributor already created", e);
-    // }
-
-    const distributorW = await merkleSdk.loadDistributor(distrbutorKey[0]);
+    try {
+      distributorW = await merkleSdk.loadDistributor(distrbutorKey[0]);
+      const ataInfo = await getAccount(CX, distributorW.distributorATA);
+      if (Number(ataInfo.amount) != maxTotalClaim.toNumber()) {
+        let transferAmt = maxTotalClaim.toNumber() - Number(ataInfo.amount);
+        console.log(
+          `transferring ${transferAmt} tokens to distributor ata: ${distributorW.distributorATA} for ${shardChar}`
+        );
+        await transfer(
+          CX,
+          ADMIN_KP,
+          getAssociatedTokenAddressSync(MINT_KP.publicKey, ADMIN_KP.publicKey),
+          distributorW.distributorATA,
+          ADMIN_KP,
+          transferAmt
+        );
+        console.log(`transferred ${transferAmt} for ${shardChar}`);
+      } else {
+        console.log(`distributor ${shardChar} ata has enough tokens already:`);
+      }
+    } catch (e) {
+      console.log(`failed to transfer for ${shardChar}, ${e}`);
+    }
 
     communityDistributorKeys.set(shardChar, distributorW.key.toString());
   }
