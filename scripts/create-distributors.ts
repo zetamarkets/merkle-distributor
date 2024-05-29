@@ -104,6 +104,11 @@ async function main() {
 
     try {
       distributorW = await merkleSdk.loadDistributor(distrbutorKey[0]);
+      console.log(
+        `${shardChar} immediateClaimPercentage: ${
+          distributorW.data.immediateClaimPercentage.toNumber() / 1_000000
+        }`
+      );
     } catch (e) {
       console.log(
         `base tree for ${shardChar} has not been created yet, creating...`
@@ -175,6 +180,11 @@ async function main() {
 
     try {
       distributorW = await merkleSdk.loadDistributor(distrbutorKey[0]);
+      console.log(
+        `${shardChar} immediateClaimPercentage: ${
+          distributorW.data.immediateClaimPercentage.toNumber() / 1_000000
+        }`
+      );
     } catch (e) {
       console.log(
         `community tree for ${shardChar} has not been created yet, creating...`
@@ -190,10 +200,8 @@ async function main() {
         claimStartTs: CLAIM_START_TS,
         claimEndTs: CLAIM_END_TS,
         stakeClaimOnly: false,
-        immediateClaimPercentage: new anchor.BN(
-          immediateClaimPercentage * 1_000000
-        ),
-        laterClaimOffsetSeconds: FULL_CLAIM_FROM.sub(CLAIM_START_TS),
+        immediateClaimPercentage: new anchor.BN(100 * 1_000000),
+        laterClaimOffsetSeconds: new anchor.BN(0),
       });
 
       console.log(`created for ${shardChar}`);

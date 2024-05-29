@@ -37,30 +37,37 @@ async function main() {
         const laterClaimOffsetSeconds = FULL_CLAIM_FROM.sub(CLAIM_START_TS);
 
         if (
-          distributorW.data.claimEndTs.toNumber() == CLAIM_END_TS.toNumber() &&
-          distributorW.data.laterClaimOffsetSeconds.toNumber() ==
-            laterClaimOffsetSeconds.toNumber()
+          distributorW.data.claimStartTs.toNumber() !=
+            CLAIM_START_TS.toNumber() ||
+          distributorW.data.claimEndTs.toNumber() != CLAIM_END_TS.toNumber()
         ) {
-          return;
+          console.log(
+            `shardchar: ${shardChar}, distributorkey: ${distributorKey}, updateClaimWindow`
+          );
+          await distributorW.updateClaimWindow({
+            claimStartTs: CLAIM_START_TS,
+            claimEndTs: CLAIM_END_TS,
+            adminAuth: ADMIN_KP,
+          });
         }
 
-        console.log(
-          `shardchar: ${shardChar}, distributorkey: ${distributorKey}`
-        );
-        await Promise.all([
-          //   distributorW.updateClaimWindow({
-          //     claimStartTs: CLAIM_START_TS,
-          //     claimEndTs: CLAIM_END_TS,
-          //     adminAuth: ADMIN_KP,
-          //   }),
-          distributorW.updateDistributorClaimPercentage({
+        if (
+          distributorW.data.immediateClaimPercentage.toNumber() !=
+            immediateClaimPercentage * 1_000000 ||
+          distributorW.data.laterClaimOffsetSeconds.toNumber() !=
+            laterClaimOffsetSeconds.toNumber()
+        ) {
+          console.log(
+            `shardchar: ${shardChar}, distributorkey: ${distributorKey}, update claim percentages and offset seconds`
+          );
+          await distributorW.updateDistributorClaimPercentage({
             immediateClaimPercentage: new anchor.BN(
               immediateClaimPercentage * 1_000000
             ),
             laterClaimOffsetSeconds,
             adminAuth: ADMIN_KP,
-          }),
-        ]);
+          });
+        }
       }
     )
   );
@@ -74,33 +81,34 @@ async function main() {
           new PublicKey(distributorKey)
         );
 
-        const laterClaimOffsetSeconds = FULL_CLAIM_FROM.sub(CLAIM_START_TS);
-
         if (
-          distributorW.data.claimEndTs.toNumber() == CLAIM_END_TS.toNumber() &&
-          distributorW.data.laterClaimOffsetSeconds.toNumber() ==
-            laterClaimOffsetSeconds.toNumber()
+          distributorW.data.claimStartTs.toNumber() !=
+            CLAIM_START_TS.toNumber() ||
+          distributorW.data.claimEndTs.toNumber() != CLAIM_END_TS.toNumber()
         ) {
-          return;
+          console.log(
+            `shardchar: ${shardChar}, distributorkey: ${distributorKey}, updateClaimWindow`
+          );
+          await distributorW.updateClaimWindow({
+            claimStartTs: CLAIM_START_TS,
+            claimEndTs: CLAIM_END_TS,
+            adminAuth: ADMIN_KP,
+          });
         }
 
-        console.log(
-          `shardchar: ${shardChar}, distributorkey: ${distributorKey}`
-        );
-        await Promise.all([
-          //   distributorW.updateClaimWindow({
-          //     claimStartTs: CLAIM_START_TS,
-          //     claimEndTs: CLAIM_END_TS,
-          //     adminAuth: ADMIN_KP,
-          //   }),
-          distributorW.updateDistributorClaimPercentage({
-            immediateClaimPercentage: new anchor.BN(
-              immediateClaimPercentage * 1_000000
-            ),
-            laterClaimOffsetSeconds,
+        if (
+          distributorW.data.immediateClaimPercentage.toNumber() != 100_000000 ||
+          distributorW.data.laterClaimOffsetSeconds.toNumber() != 0
+        ) {
+          console.log(
+            `shardchar: ${shardChar}, distributorkey: ${distributorKey}, update claim percentages and offset seconds`
+          );
+          await distributorW.updateDistributorClaimPercentage({
+            immediateClaimPercentage: new anchor.BN(100 * 1_000000),
+            laterClaimOffsetSeconds: new anchor.BN(0),
             adminAuth: ADMIN_KP,
-          }),
-        ]);
+          });
+        }
       }
     )
   );
