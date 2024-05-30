@@ -35,6 +35,7 @@ export const TEST_COMMUNITY_DISTRIBUTOR_KEYS: Record<string, string> = {
   "2": "EFLy2nnVQz9WgxDVWuTx2ggJfGyTnwNquuHxfkFnyK2E",
   "3": "6sEM9A2opJ46vuXMVTWkshHsJaSsii5YN2TatZQ1uj7d",
   "4": "GeGX5T6Qig9uPmXdaQdWG36Lmj1hSQsxXkj5oDAwBzhR",
+  "5": "3D3srvzSEVas8YbuEfCfJdRXV2Ry9bZe6wm8NUJ7GFZw",
   "6": "7g2wXmoUFiDy4cbmEjQ1oRWX2gQ5daK3ioXS7HjcRyTY",
   "7": "2VFN9vh4BLVtAZFkPaJs41uM8zoXusf2Gt7rHoxA8ztT",
   "8": "DTEcMjBUex49PG7347mHVfNBUaZVQAjr4MuZfsozeqdH",
