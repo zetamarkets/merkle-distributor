@@ -41,7 +41,7 @@ async function main() {
 
   const treesFolderPath = path.resolve(__dirname, "./trees");
 
-  const shardToDo = "5_community";
+  const shardToDo = "5";
 
   const treeFc = fs.readFileSync(`${treesFolderPath}/${shardToDo}.json`, {
     encoding: "utf-8",

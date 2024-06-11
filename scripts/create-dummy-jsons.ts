@@ -16,8 +16,7 @@ const headers = ["Address", "BaseAllocation", "CommunityAllocation"];
 async function main() {
   const fileContent = fs.readFileSync(csvFilePath, { encoding: "utf-8" });
 
-  const shardedBaseJsons: Map<string, object[]> = new Map();
-  const shardedCommunityJsons: Map<string, object[]> = new Map();
+  const shardedJsons: Map<string, object[]> = new Map();
 
   parse(
     fileContent,
@@ -31,83 +30,45 @@ async function main() {
         console.error(error);
       }
 
-      console.log(result);
-
       result.forEach((r) => {
         let firstChar = r.Address[0].toLowerCase();
-        // console.log(firstChar);
-        if (r.BaseAllocation != 0) {
-          if (shardedBaseJsons.has(firstChar)) {
-            shardedBaseJsons.get(firstChar)!.push({
-              account: r.Address,
-              amount: Math.floor(r.BaseAllocation * Math.pow(10, 6)),
-            });
-          } else {
-            shardedBaseJsons.set(firstChar, [
-              {
-                account: r.Address,
-                amount: Math.floor(r.BaseAllocation * Math.pow(10, 6)),
-              },
-            ]);
-          }
-        }
 
-        if (r.CommunityAllocation != 0) {
-          if (shardedCommunityJsons.has(firstChar)) {
-            shardedCommunityJsons.get(firstChar)!.push({
+        let totalAllocation =
+          Number(r.BaseAllocation) + Number(r.CommunityAllocation);
+        console.log(totalAllocation);
+
+        if (totalAllocation != 0) {
+          if (shardedJsons.has(firstChar)) {
+            shardedJsons.get(firstChar)!.push({
               account: r.Address,
-              amount: Math.floor(r.CommunityAllocation * Math.pow(10, 6)),
+              amount: Math.floor(totalAllocation * Math.pow(10, 6)),
             });
           } else {
-            shardedCommunityJsons.set(firstChar, [
+            shardedJsons.set(firstChar, [
               {
                 account: r.Address,
-                amount: Math.floor(r.CommunityAllocation * Math.pow(10, 6)),
+                amount: Math.floor(totalAllocation * Math.pow(10, 6)),
               },
             ]);
           }
         }
       });
 
-      console.log(shardedBaseJsons);
-      console.log(shardedCommunityJsons);
-
-      shardedBaseJsons.forEach((baseAllocations, firstChar) => {
+      shardedJsons.forEach((baseAllocations, firstChar) => {
         const newBasePath = path.resolve(
           __dirname,
-          `./trees/${firstChar}_base.json`
+          `./trees/${firstChar}.json`
         );
 
         const newKpPath = path.resolve(
           __dirname,
-          `./trees/${firstChar}_base_kp.json`
+          `./trees/${firstChar}_kp.json`
         );
 
         const kp = Keypair.generate();
 
         fs.writeFileSync(newKpPath, "[" + kp.secretKey.toString() + "]");
         fs.writeFileSync(newBasePath, JSON.stringify(baseAllocations), "utf-8");
-      });
-
-      shardedCommunityJsons.forEach((communityAllocations, firstChar) => {
-        const newCommunityPath = path.resolve(
-          __dirname,
-          `./trees/${firstChar}_community.json`
-        );
-
-        const newKpPath = path.resolve(
-          __dirname,
-          `./trees/${firstChar}_community_kp.json`
-        );
-
-        const kp = Keypair.generate();
-
-        fs.writeFileSync(newKpPath, "[" + kp.secretKey.toString() + "]");
-        fs.writeFileSync(
-          newCommunityPath,
-          JSON.stringify(communityAllocations),
-          "utf8"
-        );
       });
     }
   );
