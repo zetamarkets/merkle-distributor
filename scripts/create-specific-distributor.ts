@@ -4,7 +4,7 @@ import * as fs from "fs";
 import * as path from "path";
 
 import adminPrivateKey from "./test-airdrop-admin.json";
-import mintPrivateKey from "./test-mint.json";
+import mintPrivateKey from "./test-mint-v2.json";
 
 import {
   MerkleDistributorSDK,

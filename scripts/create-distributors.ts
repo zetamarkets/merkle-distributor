@@ -4,7 +4,7 @@ import * as fs from "fs";
 import * as path from "path";
 
 import adminPrivateKey from "./test-airdrop-admin.json";
-import mintPrivateKey from "./test-mint.json";
+import mintPrivateKey from "./test-mint-v2.json";
 
 import {
   MerkleDistributorSDK,
@@ -25,8 +25,8 @@ const CX = new Connection(
   "confirmed"
 );
 
-const CLAIM_START_TS = new anchor.BN(1718064000); // June 11 00:00
-const FULL_CLAIM_FROM = new anchor.BN(1718668800); // June 18 00:00
+const CLAIM_START_TS = new anchor.BN(1718668800); // June 18 00:00
+const FULL_CLAIM_FROM = new anchor.BN(1718712000); // June 18 12:00
 const CLAIM_END_TS = new anchor.BN(1719187200); // June 24 00:00
 const immediateClaimPercentage = 50; // Linearly scale up from 50%
 

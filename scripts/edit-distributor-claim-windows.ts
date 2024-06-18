@@ -3,10 +3,7 @@ import { Keypair, Connection, PublicKey } from "@solana/web3.js";
 import adminPrivateKey from "./test-airdrop-admin.json";
 import { MerkleDistributorSDK } from "../src";
 
-import {
-  TEST_BASE_DISTRIBUTOR_KEYS,
-  TEST_COMMUNITY_DISTRIBUTOR_KEYS,
-} from "../src";
+import { TEST_DISTRIBUTOR_KEYS } from "../src";
 const ADMIN_KP = Keypair.fromSecretKey(Buffer.from(adminPrivateKey));
 const CX = new Connection(
   "https://zeta.rpcpool.com/7d48e129-e378-441c-8bff-a712b2e6ea2c",
@@ -28,7 +25,7 @@ async function main() {
   const merkleSdk = MerkleDistributorSDK.load({ provider });
 
   await Promise.all(
-    Object.entries(TEST_BASE_DISTRIBUTOR_KEYS).map(
+    Object.entries(TEST_DISTRIBUTOR_KEYS).map(
       async ([shardChar, distributorKey]) => {
         const distributorW = await merkleSdk.loadDistributor(
           new PublicKey(distributorKey)
@@ -65,47 +62,6 @@ async function main() {
               immediateClaimPercentage * 1_000000
             ),
             laterClaimOffsetSeconds,
-            adminAuth: ADMIN_KP,
-          });
-        }
-      }
-    )
-  );
-
-  console.log("Doing community trees now");
-
-  await Promise.all(
-    Object.entries(TEST_COMMUNITY_DISTRIBUTOR_KEYS).map(
-      async ([shardChar, distributorKey]) => {
-        const distributorW = await merkleSdk.loadDistributor(
-          new PublicKey(distributorKey)
-        );
-
-        if (
-          distributorW.data.claimStartTs.toNumber() !=
-            CLAIM_START_TS.toNumber() ||
-          distributorW.data.claimEndTs.toNumber() != CLAIM_END_TS.toNumber()
-        ) {
-          console.log(
-            `shardchar: ${shardChar}, distributorkey: ${distributorKey}, updateClaimWindow`
-          );
-          await distributorW.updateClaimWindow({
-            claimStartTs: CLAIM_START_TS,
-            claimEndTs: CLAIM_END_TS,
-            adminAuth: ADMIN_KP,
-          });
-        }
-
-        if (
-          distributorW.data.immediateClaimPercentage.toNumber() != 100_000000 ||
-          distributorW.data.laterClaimOffsetSeconds.toNumber() != 0
-        ) {
-          console.log(
-            `shardchar: ${shardChar}, distributorkey: ${distributorKey}, update claim percentages and offset seconds`
-          );
-          await distributorW.updateDistributorClaimPercentage({
-            immediateClaimPercentage: new anchor.BN(100 * 1_000000),
-            laterClaimOffsetSeconds: new anchor.BN(0),
             adminAuth: ADMIN_KP,
           });
         }
