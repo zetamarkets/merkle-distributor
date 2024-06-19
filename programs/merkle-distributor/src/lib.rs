@@ -89,6 +89,14 @@ pub mod merkle_distributor {
         Ok(())
     }
 
+    pub fn update_distributor_admin_auth(ctx: Context<UpdateDistributorAdminAuth>) -> Result<()> {
+        let distributor = &mut ctx.accounts.distributor;
+
+        distributor.admin_auth = ctx.accounts.new_admin.key();
+
+        Ok(())
+    }
+
     pub fn update_distributor_claim_window(
         ctx: Context<UpdateDistributor>,
         claim_start_ts: u64,
@@ -428,6 +436,18 @@ pub struct NewDistributor<'info> {
 
     /// The [System] program.
     pub system_program: Program<'info, System>,
+}
+
+/// Accounts for [merkle_distributor::update_distributor_admin_auth].
+#[derive(Accounts)]
+pub struct UpdateDistributorAdminAuth<'info> {
+    /// Admin key of the distributor.
+    pub admin_auth: Signer<'info>,
+
+    pub new_admin: AccountInfo<'info>,
+
+    #[account(mut, has_one = admin_auth @ ErrorCode::DistributorAdminMismatch)]
+    pub distributor: Account<'info, MerkleDistributor>,
 }
 
 /// Accounts for [merkle_distributor::update_distributor].
