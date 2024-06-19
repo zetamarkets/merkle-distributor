@@ -4,7 +4,7 @@ import * as fs from "fs";
 import * as path from "path";
 
 import adminPrivateKey from "./test-airdrop-admin.json";
-import mintPrivateKey from "./test-mint.json";
+import mintPrivateKey from "./test-mint-v2.json";
 
 import {
   MerkleDistributorSDK,
@@ -25,9 +25,9 @@ const CX = new Connection(
   "confirmed"
 );
 
-const CLAIM_START_TS = new anchor.BN(1716595200); // May 25 00:00
-const FULL_CLAIM_FROM = new anchor.BN(1716854400); // May 28 00:00
-const CLAIM_END_TS = new anchor.BN(1716940800); // May 29 00:00
+const CLAIM_START_TS = new anchor.BN(1718668800); // June 18 00:00
+const FULL_CLAIM_FROM = new anchor.BN(1718712000); // June 18 12:00
+const CLAIM_END_TS = new anchor.BN(1719187200); // June 24 00:00
 const immediateClaimPercentage = 50; // Linearly scale up from 50%
 
 async function main() {
@@ -41,24 +41,20 @@ async function main() {
 
   const treesFolderPath = path.resolve(__dirname, "./trees");
 
-  const baseTrees: Map<string, { account: PublicKey; amount: anchor.BN }[]> =
+  const trees: Map<string, { account: PublicKey; amount: anchor.BN }[]> =
     new Map();
-  const baseBaseKps: Map<string, Keypair> = new Map();
-  const communityTrees: Map<
-    string,
-    { account: PublicKey; amount: anchor.BN }[]
-  > = new Map();
-  const communityBaseKps: Map<string, Keypair> = new Map();
+  const baseKps: Map<string, Keypair> = new Map();
+
   fs.readdirSync(treesFolderPath).forEach((fileName) => {
     const filePath = path.resolve(__dirname, `./trees/${fileName}`);
     const fileContent = fs.readFileSync(filePath, { encoding: "utf-8" });
     const firstChar = fileName[0];
-    if (fileName.includes("base_kp")) {
-      baseBaseKps.set(
+    if (fileName.includes("kp")) {
+      baseKps.set(
         firstChar,
         Keypair.fromSecretKey(Buffer.from(JSON.parse(fileContent)))
       );
-    } else if (fileName.includes("base")) {
+    } else {
       const nonTransformedTree = JSON.parse(fileContent);
       const transformedTree = nonTransformedTree.map(
         (x: { account: string; amount: number }) => {
@@ -68,30 +64,14 @@ async function main() {
           };
         }
       );
-      baseTrees.set(firstChar, transformedTree);
-    } else if (fileName.includes("community_kp")) {
-      communityBaseKps.set(
-        firstChar,
-        Keypair.fromSecretKey(Buffer.from(JSON.parse(fileContent)))
-      );
-    } else if (fileName.includes("community")) {
-      const nonTransformedTree = JSON.parse(fileContent);
-      const transformedTree = nonTransformedTree.map(
-        (x: { account: string; amount: number }) => {
-          return {
-            account: new PublicKey(x.account),
-            amount: new anchor.BN(x.amount),
-          };
-        }
-      );
-      communityTrees.set(firstChar, transformedTree);
+      trees.set(firstChar, transformedTree);
     }
   });
 
-  let baseDistributorKeys = new Map();
-  for (let [shardChar, preTreeArr] of baseTrees.entries()) {
-    const baseKp = baseBaseKps.get(shardChar)!;
-    const distrbutorKey = findDistributorKey(baseKp.publicKey);
+  let distributorKeys = new Map();
+  for (let [shardChar, preTreeArr] of trees.entries()) {
+    const kp = baseKps.get(shardChar)!;
+    const distrbutorKey = findDistributorKey(kp.publicKey);
 
     const tree = new BalanceTree(preTreeArr);
     let maxTotalClaim = new anchor.BN(0);
@@ -120,7 +100,7 @@ async function main() {
         maxNumNodes,
         tokenMint: MINT_KP.publicKey,
         adminAuth: ADMIN_KP,
-        base: baseKp,
+        base: kp,
         claimStartTs: CLAIM_START_TS,
         claimEndTs: CLAIM_END_TS,
         stakeClaimOnly: false,
@@ -159,83 +139,9 @@ async function main() {
       console.log(`failed to transfer for ${shardChar}, ${e}`);
     }
 
-    baseDistributorKeys.set(shardChar, distributorW.key.toString());
+    distributorKeys.set(shardChar, distributorW.key.toString());
   }
 
-  console.log("Doing community trees now");
-
-  let communityDistributorKeys = new Map();
-  for (let [shardChar, preTreeArr] of communityTrees.entries()) {
-    const baseKp = communityBaseKps.get(shardChar)!;
-    const distrbutorKey = findDistributorKey(baseKp.publicKey);
-
-    const tree = new BalanceTree(preTreeArr);
-    let maxTotalClaim = new anchor.BN(0);
-    preTreeArr.forEach((x) => {
-      maxTotalClaim = maxTotalClaim.add(x.amount);
-    });
-    let maxNumNodes = new anchor.BN(preTreeArr.length);
-
-    let distributorW: MerkleDistributorWrapper;
-
-    try {
-      distributorW = await merkleSdk.loadDistributor(distrbutorKey[0]);
-      console.log(
-        `${shardChar} immediateClaimPercentage: ${
-          distributorW.data.immediateClaimPercentage.toNumber() / 1_000000
-        }`
-      );
-    } catch (e) {
-      console.log(
-        `community tree for ${shardChar} has not been created yet, creating...`
-      );
-
-      await merkleSdk.createDistributor({
-        root: tree.getRoot(),
-        maxTotalClaim,
-        maxNumNodes,
-        tokenMint: MINT_KP.publicKey,
-        adminAuth: ADMIN_KP,
-        base: baseKp,
-        claimStartTs: CLAIM_START_TS,
-        claimEndTs: CLAIM_END_TS,
-        stakeClaimOnly: false,
-        immediateClaimPercentage: new anchor.BN(100 * 1_000000),
-        laterClaimOffsetSeconds: new anchor.BN(0),
-      });
-
-      console.log(`created for ${shardChar}`);
-
-      distributorW = await merkleSdk.loadDistributor(distrbutorKey[0]);
-    }
-
-    try {
-      distributorW = await merkleSdk.loadDistributor(distrbutorKey[0]);
-      const ataInfo = await getAccount(CX, distributorW.distributorATA);
-      if (Number(ataInfo.amount) != maxTotalClaim.toNumber()) {
-        let transferAmt = maxTotalClaim.toNumber() - Number(ataInfo.amount);
-        console.log(
-          `transferring ${transferAmt} tokens to distributor ata: ${distributorW.distributorATA} for ${shardChar}`
-        );
-        await transfer(
-          CX,
-          ADMIN_KP,
-          getAssociatedTokenAddressSync(MINT_KP.publicKey, ADMIN_KP.publicKey),
-          distributorW.distributorATA,
-          ADMIN_KP,
-          transferAmt
-        );
-        console.log(`transferred ${transferAmt} for ${shardChar}`);
-      } else {
-        console.log(`distributor ${shardChar} ata has enough tokens already:`);
-      }
-    } catch (e) {
-      console.log(`failed to transfer for ${shardChar}, ${e}`);
-    }
-
-    communityDistributorKeys.set(shardChar, distributorW.key.toString());
-  }
-
-  console.log(baseDistributorKeys, communityDistributorKeys);
+  console.log(distributorKeys);
 }
 main();

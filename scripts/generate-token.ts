@@ -7,17 +7,23 @@ import {
 import { Keypair, Connection } from "@solana/web3.js";
 
 import adminPrivateKey from "./test-airdrop-admin.json";
-import mintPrivateKey from "./test-mint.json";
+import mintPrivateKey from "./test-mint-v2.json";
 
 const ADMIN_KP = Keypair.fromSecretKey(Buffer.from(adminPrivateKey));
 const MINT_KP = Keypair.fromSecretKey(Buffer.from(mintPrivateKey));
 const CX = new Connection(
-  "https://zeta.rpcpool.com/7d48e129-e378-441c-8bff-a712b2e6ea2c",
+  "https://zeta-zeta-61e4.mainnet.rpcpool.com/82783eef-0ee4-4300-b3c7-f97e504b1698",
   "confirmed"
 );
 
 async function main() {
-  const mintInfo = await getMint(CX, MINT_KP.publicKey);
+  let mintInfo: any = undefined;
+
+  try {
+    mintInfo = await getMint(CX, MINT_KP.publicKey);
+  } catch (e) {
+    console.log(e);
+  }
 
   if (!mintInfo) {
     console.log(mintInfo, "mint not created");
@@ -48,7 +54,7 @@ async function main() {
         MINT_KP.publicKey,
         adminAtaInfo.address,
         ADMIN_KP,
-        BigInt("1000000000000000")
+        BigInt("10000000000000000")
       );
     }
   }
