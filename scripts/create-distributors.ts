@@ -39,14 +39,14 @@ async function main() {
 
   const merkleSdk = MerkleDistributorSDK.load({ provider });
 
-  const treesFolderPath = path.resolve(__dirname, "./trees");
+  const treesFolderPath = path.resolve(__dirname, "./fake-trees");
 
   const trees: Map<string, { account: PublicKey; amount: anchor.BN }[]> =
     new Map();
   const baseKps: Map<string, Keypair> = new Map();
 
   fs.readdirSync(treesFolderPath).forEach((fileName) => {
-    const filePath = path.resolve(__dirname, `./trees/${fileName}`);
+    const filePath = path.resolve(__dirname, `./fake-trees/${fileName}`);
     const fileContent = fs.readFileSync(filePath, { encoding: "utf-8" });
     const firstChar = fileName[0];
     if (fileName.includes("kp")) {

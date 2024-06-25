@@ -21,7 +21,7 @@ use zeta_staking::program::ZetaStaking;
 
 pub mod merkle_proof;
 
-declare_id!("9xXVvfr2XEikR7ZFScHtNY2Gb4s5jKTLXNTnTtux99KD");
+declare_id!("4JSALTb4QbipG7NNLryAFJg4y8X5C1ELErSncsVMA3gZ");
 
 const PERCENT_100: u64 = 100_000000;
 
@@ -444,6 +444,7 @@ pub struct UpdateDistributorAdminAuth<'info> {
     /// Admin key of the distributor.
     pub admin_auth: Signer<'info>,
 
+    /// CHECK: Just have new admin not be signer
     pub new_admin: AccountInfo<'info>,
 
     #[account(mut, has_one = admin_auth @ ErrorCode::DistributorAdminMismatch)]

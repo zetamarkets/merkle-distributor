@@ -20,3 +20,8 @@ The Merkle distributor is also significantly easier to manage from an operations
 ## License
 
 The Merkle distributor program and SDK is distributed under the GPL v3.0 license.
+
+## Checklist when deploying
+
+- Solana version 1.18.5 to build
+- check program id in CPI directory (deps)

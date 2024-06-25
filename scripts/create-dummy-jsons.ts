@@ -57,12 +57,12 @@ async function main() {
       shardedJsons.forEach((baseAllocations, firstChar) => {
         const newBasePath = path.resolve(
           __dirname,
-          `./trees/${firstChar}.json`
+          `./fake-trees/${firstChar}.json`
         );
 
         const newKpPath = path.resolve(
           __dirname,
-          `./trees/${firstChar}_kp.json`
+          `./fake-trees/${firstChar}_kp.json`
         );
 
         const kp = Keypair.generate();
