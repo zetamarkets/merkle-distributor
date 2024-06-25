@@ -11,3 +11,5 @@ tests/
 *.toml
 *.lock
 tsconfig.json
+*-kp.json
+*-pid.json
