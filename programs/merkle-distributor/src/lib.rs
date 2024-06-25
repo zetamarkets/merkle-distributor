@@ -444,6 +444,7 @@ pub struct UpdateDistributorAdminAuth<'info> {
     /// Admin key of the distributor.
     pub admin_auth: Signer<'info>,
 
+    /// CHECK: Just have new admin not be signer
     pub new_admin: AccountInfo<'info>,
 
     #[account(mut, has_one = admin_auth @ ErrorCode::DistributorAdminMismatch)]
