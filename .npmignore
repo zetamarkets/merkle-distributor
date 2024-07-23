@@ -13,3 +13,5 @@ tests/
 tsconfig.json
 *-kp.json
 *-pid.json
+*-distributor.json
+

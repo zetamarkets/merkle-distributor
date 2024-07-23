@@ -68,4 +68,5 @@ export const PRODUCTION_DISTRIBUTOR_KEYS: Record<string, string> = {
   x: "8aTtdjE4v7HhiDgHAcS156vb1zvboCh1ukHLXa5AqBEk",
   y: "C12iWEzCdiyU1zL9VrJwFCW26XZTMmSwoJczc9ZrDuHo",
   z: "6o1ZexNBJnQCDXiWtJgDPkE4u5WndgUb1wKDjofRuWme",
+  misc: "7YiyMXFSmjoW9yV9xoujqcoZve7j1A2mEVnjpifMU6mx",
 };

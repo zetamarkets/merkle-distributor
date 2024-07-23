@@ -332,6 +332,11 @@ pub mod merkle_distributor {
             token_program: ctx.accounts.token_program.to_account_info(),
         };
         let cpi_ctx = CpiContext::new(ctx.accounts.zeta_staking.to_account_info(), cpi_accs);
+
+        if distributor.stake_claim_only {
+            assert!(stake_duration_epochs >= 90)
+        }
+
         zeta_staking::cpi::stake(
             cpi_ctx,
             zeta_stake_bit_to_use,
