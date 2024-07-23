@@ -1,16 +1,18 @@
 import { utils } from "@coral-xyz/anchor";
 import { PublicKey } from "@solana/web3.js";
 
-import { PROGRAM_ID } from "./constants";
-
-export const findDistributorKey = (base: PublicKey): [PublicKey, number] => {
+export const findDistributorKey = (
+  programId: PublicKey,
+  base: PublicKey
+): [PublicKey, number] => {
   return PublicKey.findProgramAddressSync(
     [utils.bytes.utf8.encode("MerkleDistributor"), base.toBytes()],
-    PROGRAM_ID
+    programId
   );
 };
 
 export const findClaimStatusKey = (
+  programId: PublicKey,
   claimant: PublicKey,
   distributor: PublicKey
 ): [PublicKey, number] => {
@@ -20,6 +22,6 @@ export const findClaimStatusKey = (
       distributor.toBytes(),
       claimant.toBytes(),
     ],
-    PROGRAM_ID
+    programId
   );
 };

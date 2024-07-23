@@ -70,6 +70,7 @@ export class MerkleDistributorWrapper {
   }
 
   static async createDistributor(
+    programId: PublicKey,
     args: CreateDistributorArgs
   ): Promise<Distributor> {
     const { root, tokenMint } = args;
@@ -79,7 +80,10 @@ export class MerkleDistributorWrapper {
 
     const baseKey = args.base;
     const adminAuth = args.adminAuth;
-    const [distributor, bump] = findDistributorKey(baseKey.publicKey);
+    const [distributor, bump] = findDistributorKey(
+      programId,
+      baseKey.publicKey
+    );
 
     const ixs: TransactionInstruction[] = [];
     ixs.push(
@@ -137,9 +141,9 @@ export class MerkleDistributorWrapper {
     };
   }
 
-  claimIX(args: ClaimArgs): TransactionInstruction {
+  claimIX(programId: PublicKey, args: ClaimArgs): TransactionInstruction {
     const { amount, claimant, index, proof } = args;
-    const [claimStatus, _] = findClaimStatusKey(claimant, this.key);
+    const [claimStatus, _] = findClaimStatusKey(programId, claimant, this.key);
 
     return this.program.instruction.claim(
       index,
@@ -161,6 +165,7 @@ export class MerkleDistributorWrapper {
   }
 
   claimStakeIx(
+    programId: PublicKey,
     args: ClaimArgs,
     cpiAccs: {
       zetaStaking: PublicKey;
@@ -175,7 +180,7 @@ export class MerkleDistributorWrapper {
     stakeDurationEpochs: number
   ): TransactionInstruction {
     const { amount, claimant, index, proof } = args;
-    const [claimStatus, _] = findClaimStatusKey(claimant, this.key);
+    const [claimStatus, _] = findClaimStatusKey(programId, claimant, this.key);
 
     return this.program.instruction.claimStake(
       index,
@@ -206,6 +211,7 @@ export class MerkleDistributorWrapper {
   }
 
   async claimStake(
+    programId: PublicKey,
     args: ClaimArgs,
     cpiAccs: {
       zetaStaking: PublicKey;
@@ -241,6 +247,7 @@ export class MerkleDistributorWrapper {
 
     tx.add(
       this.claimStakeIx(
+        programId,
         args,
         cpiAccs,
         bitToUse,
@@ -257,12 +264,13 @@ export class MerkleDistributorWrapper {
   }
 
   async claim(
+    programId: PublicKey,
     args: ClaimArgs,
     returnTx: boolean = false
   ): Promise<TransactionSignature | Transaction> {
     const { provider } = this.sdk;
 
-    const tx = new Transaction().add(this.claimIX(args));
+    const tx = new Transaction().add(this.claimIX(programId, args));
 
     let address = spl.getAssociatedTokenAddressSync(
       this.data.mint,
@@ -291,8 +299,11 @@ export class MerkleDistributorWrapper {
     }
   }
 
-  async getClaimStatus(claimant: PublicKey): Promise<ClaimStatus> {
-    const [key] = findClaimStatusKey(claimant, this.key);
+  async getClaimStatus(
+    programId: PublicKey,
+    claimant: PublicKey
+  ): Promise<ClaimStatus> {
+    const [key] = findClaimStatusKey(programId, claimant, this.key);
     return this.program.account.claimStatus.fetch(key);
   }
 
