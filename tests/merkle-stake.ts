@@ -14,6 +14,7 @@ import { Client } from "../deps/zeta-staking/src/client";
 import { state as State } from "../deps/zeta-staking/src/state";
 import { Network } from "../deps/zeta-staking/src/types";
 import { commitmentConfig } from "../deps/zeta-staking/src/utils";
+import { STAKE_ONLY_PROGRAM_ID } from "../src";
 
 describe("merkle stake", () => {
   anchor.setProvider(anchor.AnchorProvider.env());
@@ -107,7 +108,7 @@ describe("merkle stake", () => {
     const distributorW = await merkleSdk.loadDistributor(DISTRIBUTOR_KEY);
 
     try {
-      await distributorW.claim({
+      await distributorW.claim(STAKE_ONLY_PROGRAM_ID, {
         index: new anchor.BN(0),
         amount: claimAmount0,
         proof,
@@ -139,6 +140,7 @@ describe("merkle stake", () => {
 
     try {
       await distributorW.claimStake(
+        STAKE_ONLY_PROGRAM_ID,
         {
           index: new anchor.BN(0),
           amount: claimAmount0,
@@ -164,6 +166,7 @@ describe("merkle stake", () => {
     }
 
     await distributorW.claimStake(
+      STAKE_ONLY_PROGRAM_ID,
       {
         index: new anchor.BN(0),
         amount: claimAmount0,
@@ -202,6 +205,7 @@ describe("merkle stake", () => {
 
     const proof1 = tree.getProof(1, airdropUser1.publicKey, claimAmount1);
     await distributorW.claimStake(
+      STAKE_ONLY_PROGRAM_ID,
       {
         index: new anchor.BN(1),
         amount: claimAmount1,

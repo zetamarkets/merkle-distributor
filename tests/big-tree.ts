@@ -5,6 +5,7 @@ import { BalanceTree } from "../src/utils";
 import { MerkleDistributorWrapper } from "../src";
 import { makeSDK, createAndSeedDistributor } from "./utils";
 import { PublicKey, Keypair } from "@solana/web3.js";
+import { STAKE_ONLY_PROGRAM_ID } from "../src";
 
 describe("big tree", () => {
   const NUM_LEAVES = 100_000;
@@ -62,7 +63,7 @@ describe("big tree", () => {
     const amount = new anchor.BN(100);
     const index = new anchor.BN(90000);
     const claimant = provider.wallet.publicKey;
-    await distributorWrapper.claim({
+    await distributorWrapper.claim(STAKE_ONLY_PROGRAM_ID, {
       index,
       amount,
       proof: tree.getProof(index.toNumber(), provider.wallet.publicKey, amount),

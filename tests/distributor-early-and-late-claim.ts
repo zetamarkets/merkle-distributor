@@ -5,7 +5,11 @@ import { getAccount, getAssociatedTokenAddressSync } from "@solana/spl-token";
 
 import { BalanceTree } from "../src/utils";
 import { makeSDK, createAndSeedDistributor } from "./utils";
-import { MerkleDistributorWrapper, findDistributorKey } from "../src";
+import {
+  MerkleDistributorWrapper,
+  STAKE_ONLY_PROGRAM_ID,
+  findDistributorKey,
+} from "../src";
 import { sleepUntil } from "../deps/zeta-staking/tests/test-utils";
 
 const MAX_NUM_NODES = new anchor.BN(3);
@@ -37,6 +41,7 @@ describe("distributor-early-and-late-claim", () => {
   ]);
 
   const [distributorKey, distributorBump] = findDistributorKey(
+    STAKE_ONLY_PROGRAM_ID,
     distributorBase.publicKey
   );
 
@@ -105,7 +110,7 @@ describe("distributor-early-and-late-claim", () => {
   it("try and claim before window", async () => {
     const proof = tree.getProof(0, kpOne.publicKey, claimAmountOne);
     try {
-      await distributorW.claim({
+      await distributorW.claim(STAKE_ONLY_PROGRAM_ID, {
         index: new anchor.BN(0),
         amount: claimAmountOne,
         proof,
@@ -124,7 +129,7 @@ describe("distributor-early-and-late-claim", () => {
 
     const proof = tree.getProof(0, kpOne.publicKey, claimAmountOne);
 
-    await distributorW.claim({
+    await distributorW.claim(STAKE_ONLY_PROGRAM_ID, {
       index: new anchor.BN(0),
       amount: claimAmountOne,
       proof,
@@ -156,7 +161,10 @@ describe("distributor-early-and-late-claim", () => {
       actualClaimAmountOne
     );
 
-    const claimStatus = await distributorW.getClaimStatus(kpOne.publicKey);
+    const claimStatus = await distributorW.getClaimStatus(
+      STAKE_ONLY_PROGRAM_ID,
+      kpOne.publicKey
+    );
     assert.equal(claimStatus.claimant.toString(), kpOne.publicKey.toString());
     assert.equal(
       claimStatus.claimedAmount.toString(),
@@ -170,7 +178,7 @@ describe("distributor-early-and-late-claim", () => {
     const proof = tree.getProof(0, kpOne.publicKey, claimAmountOne);
 
     try {
-      await distributorW.claim({
+      await distributorW.claim(STAKE_ONLY_PROGRAM_ID, {
         index: new anchor.BN(0),
         amount: claimAmountOne,
         proof,
@@ -186,7 +194,7 @@ describe("distributor-early-and-late-claim", () => {
   it("claim for full amount for user two", async () => {
     const proof = tree.getProof(1, kpTwo.publicKey, claimAmountTwo);
 
-    await distributorW.claim({
+    await distributorW.claim(STAKE_ONLY_PROGRAM_ID, {
       index: new anchor.BN(1),
       amount: claimAmountTwo,
       proof,
@@ -204,7 +212,10 @@ describe("distributor-early-and-late-claim", () => {
       claimAmountTwo.toNumber()
     );
 
-    const claimStatus = await distributorW.getClaimStatus(kpTwo.publicKey);
+    const claimStatus = await distributorW.getClaimStatus(
+      STAKE_ONLY_PROGRAM_ID,
+      kpTwo.publicKey
+    );
     assert.equal(claimStatus.claimant.toString(), kpTwo.publicKey.toString());
     assert.equal(
       claimStatus.claimedAmount.toString(),
@@ -218,7 +229,7 @@ describe("distributor-early-and-late-claim", () => {
     const proof = tree.getProof(2, kpThree.publicKey, claimAmountThree);
 
     try {
-      await distributorW.claim({
+      await distributorW.claim(STAKE_ONLY_PROGRAM_ID, {
         index: new anchor.BN(2),
         amount: claimAmountThree,
         proof,

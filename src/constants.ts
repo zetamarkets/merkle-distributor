@@ -7,6 +7,10 @@ export const PROGRAM_ID = new PublicKey(
   "4JSALTb4QbipG7NNLryAFJg4y8X5C1ELErSncsVMA3gZ"
 );
 
+export const STAKE_ONLY_PROGRAM_ID = new PublicKey(
+  "4nFsEC3VPbU13QpNCqbkQVbPm8HHZp1njqnL5YDruuAn"
+);
+
 export const MERKLE_DISTRIBUTOR_PROGRAM_ID = PROGRAM_ID;
 
 export const MERKLE_DISTRIBUTOR_CODER = new anchor.BorshCoder(
