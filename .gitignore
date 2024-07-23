@@ -13,4 +13,4 @@ scripts/test-airdrop-admin.json
 scripts/test-mint.json
 scripts/test-mint-v2.json
 scripts/dummy_airdrop.csv
-scripts/trees/*kp.json
+scripts/fake-trees/*kp.json

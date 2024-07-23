@@ -21,7 +21,7 @@ use zeta_staking::program::ZetaStaking;
 
 pub mod merkle_proof;
 
-declare_id!("9xXVvfr2XEikR7ZFScHtNY2Gb4s5jKTLXNTnTtux99KD");
+declare_id!("4JSALTb4QbipG7NNLryAFJg4y8X5C1ELErSncsVMA3gZ");
 
 const PERCENT_100: u64 = 100_000000;
 
@@ -332,6 +332,11 @@ pub mod merkle_distributor {
             token_program: ctx.accounts.token_program.to_account_info(),
         };
         let cpi_ctx = CpiContext::new(ctx.accounts.zeta_staking.to_account_info(), cpi_accs);
+
+        if distributor.stake_claim_only {
+            assert!(stake_duration_epochs >= 90)
+        }
+
         zeta_staking::cpi::stake(
             cpi_ctx,
             zeta_stake_bit_to_use,
@@ -444,6 +449,7 @@ pub struct UpdateDistributorAdminAuth<'info> {
     /// Admin key of the distributor.
     pub admin_auth: Signer<'info>,
 
+    /// CHECK: Just have new admin not be signer
     pub new_admin: AccountInfo<'info>,
 
     #[account(mut, has_one = admin_auth @ ErrorCode::DistributorAdminMismatch)]
