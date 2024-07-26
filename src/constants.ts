@@ -34,6 +34,7 @@ export const TEST_DISTRIBUTOR_KEYS: Record<string, string> = {
   f: "96CamMi5SBEZdVnya6A1YwEPYP8QL5vHR24eut1noe7Q",
   g: "8HJ6uTCbUr728jo4StGJXNhiEibZ2sPj4428AMt8FD97",
   h: "6KE9Hp3kfkDpMcz3tDN1PZFX2sVwUTSGirsCh2cJcUGJ",
+  stakeOnly: "DXYSBk1qejMAX47wTXr3sjNfs6FDEc32aVxewvYwe9mk",
 };
 
 export const PRODUCTION_DISTRIBUTOR_KEYS: Record<string, string> = {
@@ -73,4 +74,5 @@ export const PRODUCTION_DISTRIBUTOR_KEYS: Record<string, string> = {
   y: "C12iWEzCdiyU1zL9VrJwFCW26XZTMmSwoJczc9ZrDuHo",
   z: "6o1ZexNBJnQCDXiWtJgDPkE4u5WndgUb1wKDjofRuWme",
   misc: "7YiyMXFSmjoW9yV9xoujqcoZve7j1A2mEVnjpifMU6mx",
+  stakeOnly: "FgKniKD2AXQcRiY6R4juYwanPCjogr1ua39TnoPdkGYf",
 };
