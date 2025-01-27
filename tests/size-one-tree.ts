@@ -9,6 +9,7 @@ import {
 } from "./utils";
 import { Keypair, LAMPORTS_PER_SOL } from "@solana/web3.js";
 import { getAccount, getAssociatedTokenAddressSync } from "@solana/spl-token";
+import { STAKE_ONLY_PROGRAM_ID } from "../src";
 
 const MAX_NUM_NODES = new anchor.BN(1);
 const MAX_TOTAL_CLAIM = new anchor.BN(1_000_000_000_000);
@@ -48,7 +49,7 @@ describe("merkle distributor", () => {
     const proof = tree.getProof(0, kpOne.publicKey, claimAmountOne);
     console.log("one account tree proof:", proof);
 
-    await distributorW.claim({
+    await distributorW.claim(STAKE_ONLY_PROGRAM_ID, {
       index: new anchor.BN(0),
       amount: claimAmountOne,
       proof,
@@ -65,7 +66,10 @@ describe("merkle distributor", () => {
       claimAmountOne.toString()
     );
 
-    const claimStatus = await distributorW.getClaimStatus(kpOne.publicKey);
+    const claimStatus = await distributorW.getClaimStatus(
+      STAKE_ONLY_PROGRAM_ID,
+      kpOne.publicKey
+    );
     assert.equal(claimStatus.claimant.toString(), kpOne.publicKey.toString());
     assert.equal(
       claimStatus.claimedAmount.toString(),

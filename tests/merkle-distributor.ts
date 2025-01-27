@@ -10,6 +10,8 @@ import {
 import { Keypair, LAMPORTS_PER_SOL } from "@solana/web3.js";
 import { getAccount, getAssociatedTokenAddressSync } from "@solana/spl-token";
 
+import { STAKE_ONLY_PROGRAM_ID } from "../src";
+
 const MAX_NUM_NODES = new anchor.BN(3);
 const MAX_TOTAL_CLAIM = new anchor.BN(1_000_000_000_000);
 const ZERO_BYTES32 = Buffer.alloc(32);
@@ -84,7 +86,7 @@ describe("merkle distributor", () => {
     const distributorW = await sdk.loadDistributor(distributorKey);
 
     try {
-      await distributorW.claim({
+      await distributorW.claim(STAKE_ONLY_PROGRAM_ID, {
         index: new anchor.BN(0),
         amount: new anchor.BN(10_000_000),
         proof: [],
@@ -140,7 +142,7 @@ describe("merkle distributor", () => {
         const amount = new anchor.BN(100 + index);
         const proof = tree.getProof(index, kp.publicKey, amount);
 
-        await distributorW.claim({
+        await distributorW.claim(STAKE_ONLY_PROGRAM_ID, {
           index: new anchor.BN(index),
           amount,
           proof,
@@ -154,7 +156,10 @@ describe("merkle distributor", () => {
         );
         assert.equal(tokenAccountInfo.amount.toString(), amount.toString());
 
-        const claimStatus = await distributorW.getClaimStatus(kp.publicKey);
+        const claimStatus = await distributorW.getClaimStatus(
+          STAKE_ONLY_PROGRAM_ID,
+          kp.publicKey
+        );
         assert.equal(claimStatus.claimant.toString(), kp.publicKey.toString());
         assert.equal(claimStatus.claimedAmount.toString(), amount.toString());
       })
@@ -205,7 +210,7 @@ describe("merkle distributor", () => {
     const distributorW = await sdk.loadDistributor(distributorKey);
 
     try {
-      await distributorW.claim({
+      await distributorW.claim(STAKE_ONLY_PROGRAM_ID, {
         index: new anchor.BN(0),
         amount: new anchor.BN(2_000_000),
         proof: tree.getProof(0, userKP.publicKey, claimAmount),
@@ -241,7 +246,7 @@ describe("merkle distributor", () => {
     const distributorW = await sdk.loadDistributor(distributorKey);
 
     try {
-      await distributorW.claim({
+      await distributorW.claim(STAKE_ONLY_PROGRAM_ID, {
         index: new anchor.BN(0),
         amount: new anchor.BN(2_000_000),
         proof: tree.getProof(0, claimant, claimAmount),
@@ -300,7 +305,7 @@ describe("merkle distributor", () => {
         const amount = new anchor.BN(100 + index);
         const proof = tree.getProof(index, kp.publicKey, amount);
 
-        await distributorW.claim({
+        await distributorW.claim(STAKE_ONLY_PROGRAM_ID, {
           index: new anchor.BN(index),
           amount,
           proof,
@@ -315,7 +320,10 @@ describe("merkle distributor", () => {
         const tokenAccountInfo = await getAccount(provider.connection, ata);
         assert.equal(tokenAccountInfo.amount.toString(), amount.toString());
 
-        const claimStatus = await distributorW.getClaimStatus(kp.publicKey);
+        const claimStatus = await distributorW.getClaimStatus(
+          STAKE_ONLY_PROGRAM_ID,
+          kp.publicKey
+        );
         assert.equal(claimStatus.claimant.toString(), kp.publicKey.toString());
         assert.equal(claimStatus.claimedAmount.toString(), amount.toString());
       })
@@ -382,7 +390,7 @@ describe("merkle distributor", () => {
 
     await distributorW.reload();
 
-    await distributorW.claim({
+    await distributorW.claim(STAKE_ONLY_PROGRAM_ID, {
       index: new anchor.BN(0),
       amount: claimAmountOne.add(new anchor.BN(100)),
       proof: treeUpdated.getProof(
@@ -394,7 +402,7 @@ describe("merkle distributor", () => {
       signers: [kpOne],
     });
 
-    await distributorW.claim({
+    await distributorW.claim(STAKE_ONLY_PROGRAM_ID, {
       index: new anchor.BN(1),
       amount: claimAmountTwo.add(new anchor.BN(50)),
       proof: treeUpdated.getProof(
@@ -407,7 +415,7 @@ describe("merkle distributor", () => {
     });
 
     try {
-      await distributorW.claim({
+      await distributorW.claim(STAKE_ONLY_PROGRAM_ID, {
         index: new anchor.BN(2),
         amount: claimAmountThree,
         proof: treeUpdated.getProof(2, kpThree.publicKey, claimAmountThree),
@@ -446,7 +454,7 @@ describe("merkle distributor", () => {
     await distributorW.reload();
 
     try {
-      await distributorW.claim({
+      await distributorW.claim(STAKE_ONLY_PROGRAM_ID, {
         index: new anchor.BN(0),
         amount: claimAmountOne.sub(new anchor.BN(10)),
         proof: treeUpdated.getProof(
@@ -462,7 +470,7 @@ describe("merkle distributor", () => {
       assert.equal(e.msg, "no claimable amount");
     }
 
-    await distributorW.claim({
+    await distributorW.claim(STAKE_ONLY_PROGRAM_ID, {
       index: new anchor.BN(1),
       amount: claimAmountTwo.add(new anchor.BN(500)),
       proof: treeUpdated.getProof(
@@ -474,7 +482,7 @@ describe("merkle distributor", () => {
       signers: [kpTwo],
     });
 
-    await distributorW.claim({
+    await distributorW.claim(STAKE_ONLY_PROGRAM_ID, {
       index: new anchor.BN(2),
       amount: claimAmountThree.add(new anchor.BN(80)),
       proof: treeUpdated.getProof(

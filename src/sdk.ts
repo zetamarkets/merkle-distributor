@@ -1,6 +1,6 @@
 import * as anchor from "@coral-xyz/anchor";
-import type { PublicKey } from "@solana/web3.js";
-import { PROGRAM_ID } from "./constants";
+import { PublicKey } from "@solana/web3.js";
+
 import { MerkleDistributor } from "../target/types/merkle_distributor";
 import idl from "../target/idl/merkle_distributor.json";
 import type { CreateDistributorArgs, Distributor } from "./types";
@@ -16,17 +16,20 @@ export class MerkleDistributorSDK {
    * Loads the SDK.
    * @returns {MerkleDistributorSDK}
    */
-  static load({
-    provider,
-  }: {
-    // Provider
-    provider: anchor.AnchorProvider;
-  }): MerkleDistributorSDK {
+  static load(
+    programId: PublicKey,
+    {
+      provider,
+    }: {
+      // Provider
+      provider: anchor.AnchorProvider;
+    }
+  ): MerkleDistributorSDK {
     return new MerkleDistributorSDK(
       provider,
       new anchor.Program<MerkleDistributor>(
         idl as unknown as MerkleDistributor,
-        PROGRAM_ID,
+        programId,
         provider
       )
     );
@@ -45,9 +48,10 @@ export class MerkleDistributorSDK {
    * @returns {Distributor}
    */
   async createDistributor(
+    programId: PublicKey,
     args: Omit<CreateDistributorArgs, "sdk">
   ): Promise<Distributor> {
-    return await MerkleDistributorWrapper.createDistributor({
+    return await MerkleDistributorWrapper.createDistributor(programId, {
       sdk: this,
       ...args,
     });

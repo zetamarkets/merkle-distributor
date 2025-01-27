@@ -5,6 +5,7 @@ import { createMint, mintTo } from "@solana/spl-token";
 
 import { MerkleDistributorSDK } from "../src";
 import { Distributor } from "../src";
+import { STAKE_ONLY_PROGRAM_ID } from "../src";
 
 export const DEFAULT_TOKEN_DECIMALS = 6;
 
@@ -14,7 +15,9 @@ export const makeSDK = (): MerkleDistributorSDK => {
   // Configure the client to use the provider.
   anchor.setProvider(anchorProvider);
 
-  return MerkleDistributorSDK.load({ provider: anchorProvider });
+  return MerkleDistributorSDK.load(STAKE_ONLY_PROGRAM_ID, {
+    provider: anchorProvider,
+  });
 };
 
 export const createKeypairWithSOL = async (
@@ -58,7 +61,7 @@ export const createAndSeedDistributor = async (
     mintToUse = mint;
   }
 
-  const distributor = await sdk.createDistributor({
+  const distributor = await sdk.createDistributor(STAKE_ONLY_PROGRAM_ID, {
     root,
     maxTotalClaim,
     maxNumNodes,
